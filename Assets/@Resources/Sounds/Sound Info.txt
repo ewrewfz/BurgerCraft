@@ -1,0 +1,13 @@
+1. BGM_Opening : 게임 오프닝 BGM
+2. BGM_Playing : 게임 배경 음악
+3. SFX_Car : 자동차 클락션 소리
+4. SFX_Footstep : 캐릭터 발걸음 소리
+5. SFX_Grilling : 버거 패티 굽는 소리 (기계 주변에가면 나는 소리)
+6. SFX_Increase : 해금 zone에 서있을 때 돈 차오르는 소리
+7. SFX_Levelup : 경험치 득 & 레벨업 때 효과음
+8. SFX_Money_Get : 플레이어가 돈 먹는 소리 (레벨업하고 돈 들어올 때도 사용)
+9. SFX_Stack : 버거, 포장박스 쌓는 소리
+10. SFX_Stack_Customer : 손님 버거 쌓는 소리
+11. SFX_Trash_Stack : 쓰레기 쌓일 때 소리
+12. SFX_Trash_Throw : 쓰레기 버릴 때 소리
+13. SFX_UpgradeButton : 직원,플레이어 업그레이드 버튼 누르면 나는 소리 
