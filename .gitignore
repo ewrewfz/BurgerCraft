@@ -1,0 +1,65 @@
+# ==========================
+# Unity generated folders
+# ==========================
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+
+# ==========================
+# User-specific files
+# ==========================
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# ==========================
+# Asset meta data
+# ==========================
+# Uncomment if you wish to ignore meta files
+# *.meta
+
+# ==========================
+# Auto-generated VS/JetBrains files
+# ==========================
+.vscode/
+.idea/
+*.code-workspace
+*.resharper
+
+# ==========================
+# OS generated files
+# ==========================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
+
+# ==========================
+# Package manager
+# ==========================
+/Packages/com.unity.package-manager-ui/
+*.tgz
+
+# ==========================
+# Cache files
+# ==========================
+*.cache
+*.bak
+*.orig
