@@ -87,6 +87,15 @@ public class TrayController : MonoBehaviour
 
 	public void AddToTray(Transform child)
 	{
+		// 햄버거 개수 제한 확인
+		if (Utils.GetTrayObjectType(child) == ETrayObject.Burger)
+		{
+			if (TotalItemCount >= Define.MAX_SERVING_BURGER_COUNT)
+			{
+				return;
+			}
+		}
+
 		// 운반하는 물체 종류 추적을 위해.
 		if (CurrentTrayObject == ETrayObject.None)
 			CurrentTrayObject = Utils.GetTrayObjectType(child);

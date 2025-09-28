@@ -7,12 +7,12 @@ public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     {
         get
         {
-            // Ã³À½ »ç¿ëÇÒ ¶§¸¸
+            // Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             if (_instance == null)
             {
                 _instance = (T)GameObject.FindAnyObjectByType(typeof(T));
 
-                if (_instance != null)
+                if (_instance == null)
                 {
                     GameObject go = new GameObject(); // typeof(T).Name, typeof(T)
                     T t = go.AddComponent<T>();

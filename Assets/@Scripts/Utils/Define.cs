@@ -43,6 +43,7 @@ public static class Define
 	public const float TRASH_SPAWN_INTERVAL = 0.1f;
 	public const float GUEST_SPAWN_INTERVAL = 1f;
 	public const int GUEST_MAX_ORDER_BURGER_COUNT = 2;
+	public const int MAX_SERVING_BURGER_COUNT = 20;
 
 	public static Vector3 GUEST_LEAVE_POS = new Vector3(0, 0, 0);
 

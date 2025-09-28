@@ -172,6 +172,10 @@ public class Counter : MonoBehaviour
 
 	void OnPlayerGuestInteraction(PlayerController pc)
 	{
+
+		// jmlee20250929 TODO : 주문 UI 관련 해당 메서드에서 처리
+
+
 		// 손님 있어야 함.
 		if (_nextOrderBurgerCount == 0)
 			return;
