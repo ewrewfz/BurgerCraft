@@ -20,6 +20,9 @@ public class UI_OrderBubble : MonoBehaviour
 
 	public void RefreshUI()
 	{
+		if (_countText == null)
+			return;
+			
 		_countText.text = _count.ToString();
 	}
 }

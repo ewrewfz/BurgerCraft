@@ -206,7 +206,7 @@ public class Counter : MonoBehaviour
 			GuestController guest = _queueGuests[i];
 			guest.Destination = destTable.Chairs[i].position; // 의자로 향해 이동.
 			guest.GuestState = Define.EGuestState.Serving;
-			guest.OrderCount = 0;
+			guest.OrderCount = 0; // OrderCount를 0으로 설정하면 OrderBubble이 비활성화됨
 
 			GameObject burger = _burgerPile.RemoveFromPile();
 			guest.Tray.AddToTray(burger.transform);
