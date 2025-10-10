@@ -576,6 +576,7 @@ GameObject:
   - component: {fileID: 6713893753616561339}
   - component: {fileID: 9163309793018884333}
   - component: {fileID: 2520929182006979060}
+  - component: {fileID: 6102885129820817933}
   m_Layer: 5
   m_Name: UI_ConstructionArea
   m_TagString: Untagged
@@ -648,7 +649,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
+  m_PresetInfoIsWorld: 1
 --- !u!114 &2520929182006979060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -666,3 +667,20 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &6102885129820817933
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8621988837232000837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b43c5518168b6d4195f59a34f6f5913, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _slider: {fileID: 5753456761809115112}
+  _moneyText: {fileID: 5942213960707919083}
+  Owner: {fileID: 0}
+  SpentMoney: 0
+  TotalUpgradeMoney: 0

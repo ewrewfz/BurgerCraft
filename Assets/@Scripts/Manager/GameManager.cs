@@ -1,130 +1,230 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using static Define;
 
 public class GameManager : Singleton<GameManager>
 {
-	public Vector2 JoystickDir { get; set; } = Vector2.zero;
+    public Vector2 JoystickDir { get; set; } = Vector2.zero;
 
-	#region Burger
-	public GameObject BurgerPrefab;
+    private void Awake()
+    {
+        if (UpgradeEmployeePopup == null)
+            UpgradeEmployeePopup = Utils.FindChild<UI_UpgradeEmployeePopup>(gameObject);
 
-	private Transform _burgerRoot;
-	public Transform BurgerRoot
-	{
-		get
-		{
-			if (_burgerRoot == null)
-			{
-				GameObject go = new GameObject("@BurgerRoot");
-				_burgerRoot = go.transform;
-			}
-			return _burgerRoot;
-		}
-	}
+        UpgradeEmployeePopup.gameObject.SetActive(false);
+    }
 
-	public GameObject SpawnBurger()
-	{
-		GameObject go = GameObject.Instantiate(BurgerPrefab);
-		go.name = BurgerPrefab.name;
-		go.transform.parent = BurgerRoot;
-		return go;
-	}
+    #region Data
+    public long _money = 10000;
+    public long Money
+    {
+        get { return _money; }
+        set
+        {
+            _money = value;
+            //OnMoneyChanged?.Invoke(); 
+            BroadcastEvent(EEventType.MoneyChanged);
+        }
+    }
+    #endregion
 
-	public void DespawnBurger(GameObject burger)
-	{
-		GameObject.Destroy(burger);
-	}
-	#endregion
+    #region Contents
 
-	#region Money
-	public GameObject MoneyPrefab;
 
-	private Transform _moneyRoot;
-	public Transform MoneyRoot
-	{
-		get
-		{
-			if (_moneyRoot == null)
-			{
-				GameObject go = new GameObject("@MoneyRoot");
-				_moneyRoot = go.transform;
-			}
-			return _moneyRoot;
-		}
-	}
+    #endregion
 
-	public GameObject SpawnMoney()
-	{
-		GameObject go = GameObject.Instantiate(MoneyPrefab);
-		go.name = MoneyPrefab.name;
-		go.transform.parent = MoneyRoot;
-		return go;
-	}
+    #region Events
+    //public event Action OnMoneyChanged;
+    //public event Action OnHireEmployee;
 
-	public void DespawnMoney(GameObject money)
-	{
-		GameObject.Destroy(money);
-	}
-	#endregion
+    public void AddEventListener(EEventType type, Action action)
+    {
+        int index = (int)type;
+        if (_events.Length < index)
+            return;
 
-	#region Trash
-	public GameObject TrashPrefab;
+        _events[index] += action;
+    }
 
-	private Transform _trashRoot;
-	public Transform TrashRoot
-	{
-		get
-		{
-			if (_trashRoot == null)
-			{
-				GameObject go = new GameObject("@TrashRoot");
-				_trashRoot = go.transform;
-			}
-			return _trashRoot;
-		}
-	}
+    public void RemoveEventListener(EEventType type, Action action)
+    {
+        int index = (int)type;
+        if (_events.Length < index)
+            return;
 
-	public GameObject SpawnTrash()
-	{
-		GameObject go = GameObject.Instantiate(TrashPrefab);
-		go.name = TrashPrefab.name;
-		go.transform.parent = TrashRoot;
-		return go;
-	}
+        _events[index] -= action;
+    }
 
-	public void DespawnTrash(GameObject trash)
-	{
-		GameObject.Destroy(trash);
-	}
-	#endregion
+    public void BroadcastEvent(EEventType type)
+    {
+        int index = (int)type;
+        if (_events.Length < index)
+            return;
 
-	#region Guest
-	public GameObject GuestPrefab;
+        _events[index]?.Invoke();
+    }
 
-	private Transform _guestRoot;
-	public Transform GuestRoot
-	{
-		get
-		{
-			if (_guestRoot == null)
-			{
-				GameObject go = new GameObject("@GuestRoot");
-				_guestRoot = go.transform;
-			}
-			return _guestRoot;
-		}
-	}
+    Action[] _events = new Action[(int)EEventType.MaxCount];
+    #endregion
 
-	public GameObject SpawnGuest()
-	{
-		GameObject go = GameObject.Instantiate(GuestPrefab);
-		go.name = GuestPrefab.name;
-		go.transform.parent = GuestRoot;
-		return go;
-	}
+    #region UI
+    public UI_UpgradeEmployeePopup UpgradeEmployeePopup;
+    #endregion
 
-	public void DespawnGuest(GameObject guest)
-	{
-		GameObject.Destroy(guest);
-	}
-	#endregion
+    #region Worker
+    public GameObject WorkerPrefab;
+
+    private Transform _workerRoot;
+    public Transform WorkerRoot
+    {
+        get
+        {
+            if (_workerRoot == null)
+            {
+                GameObject go = new GameObject("@WorkerRoot");
+                _workerRoot = go.transform;
+            }
+            return _workerRoot;
+        }
+    }
+
+    public GameObject SpawnWorker()
+    {
+        GameObject go = GameObject.Instantiate(WorkerPrefab);
+        go.name = WorkerPrefab.name;
+        go.transform.parent = WorkerRoot;
+        return go;
+    }
+
+    public void DespawnWorker(GameObject worker)
+    {
+        GameObject.Destroy(worker);
+    }
+    #endregion
+
+    #region Burger
+    public GameObject BurgerPrefab;
+
+    private Transform _burgerRoot;
+    public Transform BurgerRoot
+    {
+        get
+        {
+            if (_burgerRoot == null)
+            {
+                GameObject go = new GameObject("@BurgerRoot");
+                _burgerRoot = go.transform;
+            }
+            return _burgerRoot;
+        }
+    }
+
+    public GameObject SpawnBurger()
+    {
+        GameObject go = GameObject.Instantiate(BurgerPrefab);
+        go.name = BurgerPrefab.name;
+        go.transform.parent = BurgerRoot;
+        return go;
+    }
+
+    public void DespawnBurger(GameObject burger)
+    {
+        GameObject.Destroy(burger);
+    }
+    #endregion
+
+    #region Money
+    public GameObject MoneyPrefab;
+
+    private Transform _moneyRoot;
+    public Transform MoneyRoot
+    {
+        get
+        {
+            if (_moneyRoot == null)
+            {
+                GameObject go = new GameObject("@MoneyRoot");
+                _moneyRoot = go.transform;
+            }
+            return _moneyRoot;
+        }
+    }
+
+    public GameObject SpawnMoney()
+    {
+        GameObject go = GameObject.Instantiate(MoneyPrefab);
+        go.name = MoneyPrefab.name;
+        go.transform.parent = MoneyRoot;
+        return go;
+    }
+
+    public void DespawnMoney(GameObject money)
+    {
+        GameObject.Destroy(money);
+    }
+    #endregion
+
+    #region Trash
+    public GameObject TrashPrefab;
+
+    private Transform _trashRoot;
+    public Transform TrashRoot
+    {
+        get
+        {
+            if (_trashRoot == null)
+            {
+                GameObject go = new GameObject("@TrashRoot");
+                _trashRoot = go.transform;
+            }
+            return _trashRoot;
+        }
+    }
+
+    public GameObject SpawnTrash()
+    {
+        GameObject go = GameObject.Instantiate(TrashPrefab);
+        go.name = TrashPrefab.name;
+        go.transform.parent = TrashRoot;
+        return go;
+    }
+
+    public void DespawnTrash(GameObject trash)
+    {
+        GameObject.Destroy(trash);
+    }
+    #endregion
+
+    #region Guest
+    public GameObject GuestPrefab;
+
+    private Transform _guestRoot;
+    public Transform GuestRoot
+    {
+        get
+        {
+            if (_guestRoot == null)
+            {
+                GameObject go = new GameObject("@GuestRoot");
+                _guestRoot = go.transform;
+            }
+            return _guestRoot;
+        }
+    }
+
+    public GameObject SpawnGuest()
+    {
+        GameObject go = GameObject.Instantiate(GuestPrefab);
+        go.name = GuestPrefab.name;
+        go.transform.parent = GuestRoot;
+        return go;
+    }
+
+    public void DespawnGuest(GameObject guest)
+    {
+        GameObject.Destroy(guest);
+    }
+    #endregion
 }

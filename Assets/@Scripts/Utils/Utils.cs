@@ -25,7 +25,7 @@ public static class Utils
 		return transform.gameObject;
 	}
 
-	public static T FindChild<T>(GameObject go, string name = null, bool recursive = false) where T : UnityEngine.Object
+	public static T FindChild<T>(GameObject go, string name = null, bool recursive = false) where T : UnityEngine.Component
 	{
 		if (go == null)
 			return null;
@@ -47,7 +47,7 @@ public static class Utils
 		{
 			foreach (T component in go.GetComponentsInChildren<T>())
 			{
-				if (string.IsNullOrEmpty(name) || component.name == name)
+				if (string.IsNullOrEmpty(name) || component.gameObject.name == name)
 					return component;
 			}
 		}
@@ -60,16 +60,27 @@ public static class Utils
 		return (T)Enum.Parse(typeof(T), value, true);
 	}
 
-	public static ETrayObject GetTrayObjectType(Transform t)
+	public static EObjectType GetTrayObjectType(Transform t)
 	{
 		switch (t.gameObject.tag)
 		{
 			case "Trash":
-				return ETrayObject.Trash;
+				return EObjectType.Trash;
 			case "Burger":
-				return ETrayObject.Burger;
+				return EObjectType.Burger;
+			case "Money":
+				return EObjectType.Money;
 		}
 
-		return ETrayObject.None;
+		return EObjectType.None;
+	}
+
+	public static string GetMoneyText(long money)
+	{
+		if (money < 1000) return money.ToString();
+		if (money < 1000000) return (money / 1000f).ToString("0.##") + "k"; // (k)
+		if (money < 1000000000) return (money / 1000000f).ToString("0.##") + "m"; // (m)
+		if (money < 1000000000000) return (money / 1000000000f).ToString("0.##") + "b"; // (b)
+		return (money / 1000000000000f).ToString("0.##") + "t"; // (t)
 	}
 }
