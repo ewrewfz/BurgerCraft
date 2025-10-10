@@ -208,6 +208,7 @@ Transform:
   - {fileID: 706002206267472679}
   - {fileID: 3722395447586823471}
   - {fileID: 8433487212685764280}
+  - {fileID: 1468143263114973353}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
 --- !u!114 &3105053066172111428
@@ -226,6 +227,7 @@ MonoBehaviour:
   - {fileID: 6350443962545688921}
   - {fileID: 1502567198323711713}
   Guests: []
+  WorkerPos: {fileID: 1468143263114973353}
   SpawnMoneyRemaining: 0
   SpawnTrashRemaining: 0
 --- !u!1 &5049665376368942470
@@ -309,7 +311,7 @@ GameObject:
   - component: {fileID: 3722395447586823471}
   - component: {fileID: 6011377236412831437}
   - component: {fileID: 4956507883167803643}
-  - component: {fileID: 64252003138424308}
+  - component: {fileID: 7270398220734842290}
   m_Layer: 0
   m_Name: MoneyPile
   m_TagString: Untagged
@@ -369,7 +371,7 @@ MonoBehaviour:
   _column: 2
   _size: {x: 0.2, y: 0.1, z: 0.3}
   _dropInterval: 0.05
---- !u!114 &64252003138424308
+--- !u!114 &7270398220734842290
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -378,10 +380,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 6520923978806762221}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 780ca8a9b1f3077419c1c267ce99bb5c, type: 3}
+  m_Script: {fileID: 11500000, guid: 21e9dee43133316449be23face3d1c3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   InteractInterval: 0.5
+  CurrentWorker: {fileID: 0}
 --- !u!1 &8040894644356459244
 GameObject:
   m_ObjectHideFlags: 0
@@ -490,6 +493,37 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.3825964, y: 0.79295886, z: 1.3583087}
   m_Center: {x: 0, y: 0.39241797, z: 0}
+--- !u!1 &8469471980403979272
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1468143263114973353}
+  m_Layer: 0
+  m_Name: WorkerPos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1468143263114973353
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8469471980403979272}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.70710784, z: -0, w: -0.70710576}
+  m_LocalPosition: {x: -1.319, y: 0.348, z: 0.118}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8188308716013201239}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8889729554643049451
 GameObject:
   m_ObjectHideFlags: 0
@@ -501,7 +535,7 @@ GameObject:
   - component: {fileID: 706002206267472679}
   - component: {fileID: 1560832032898233387}
   - component: {fileID: 3647124222114663071}
-  - component: {fileID: 4767240192639206832}
+  - component: {fileID: 2838456343062469938}
   m_Layer: 0
   m_Name: TrashPile
   m_TagString: Untagged
@@ -561,7 +595,7 @@ MonoBehaviour:
   _column: 1
   _size: {x: 0.5, y: 0.1, z: 0.5}
   _dropInterval: 0.05
---- !u!114 &4767240192639206832
+--- !u!114 &2838456343062469938
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -570,7 +604,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 8889729554643049451}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 780ca8a9b1f3077419c1c267ce99bb5c, type: 3}
+  m_Script: {fileID: 11500000, guid: 21e9dee43133316449be23face3d1c3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   InteractInterval: 0.5
+  CurrentWorker: {fileID: 0}
