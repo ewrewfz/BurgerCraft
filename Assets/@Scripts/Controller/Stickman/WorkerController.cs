@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using static Define;
 
@@ -11,33 +12,43 @@ using static Define;
 [RequireComponent(typeof(CharacterController))]
 public class WorkerController : StickmanController
 {
-	protected CharacterController _controller;
+    protected CharacterController _controller;
+    public SystemBase CurrentSystem;
 
-	protected override void Awake()
-	{
-		base.Awake();
-
-		_controller = GetComponent<CharacterController>();
-	}
-
-	private void Start()
-	{
-		State = Define.EAnimState.Move;
-	}
-
-	protected override void Update()
+    public Coroutine WorkerJob;
+    public void DoJob(IEnumerator job)
     {
-		base.Update();
+        if (WorkerJob != null)
+            StopCoroutine(WorkerJob);
 
-		if (HasArrivedAtDestination)
-		{
-			_navMeshAgent.isStopped = true;
-			State = EAnimState.Idle;
-		}
-		else
-		{
-			State = EAnimState.Move;
-			LookAtDestination();
-		}
-	}
+        WorkerJob = StartCoroutine(job);
+    }
+
+    protected override void Awake()
+    {
+        base.Awake();
+
+        _controller = GetComponent<CharacterController>();
+    }
+
+    private void Start()
+    {
+        State = Define.EAnimState.Move;
+    }
+
+    protected override void Update()
+    {
+        base.Update();
+
+        if (HasArrivedAtDestination)
+        {
+            _navMeshAgent.isStopped = true;
+            State = EAnimState.Idle;
+        }
+        else
+        {
+            State = EAnimState.Move;
+            LookAtDestination();
+        }
+    }
 }

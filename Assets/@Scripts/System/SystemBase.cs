@@ -1,16 +1,26 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class SystemBase : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public List<WorkerController> Workers = new List<WorkerController>();
+
+    [SerializeField]
+    private Restaurant Owner;
+
+    public virtual bool HasJob => false;
+
+    public virtual void AddWorker(WorkerController worker)
     {
-        
+        Workers.Add(worker);
+        worker.CurrentSystem = this;
     }
 
-    // Update is called once per frame
-    void Update()
+    public virtual void RemoveWorker(WorkerController worker)
     {
-        
+        Workers.Remove(worker);
+        worker.StopCoroutine(worker.WorkerJob);
+        worker.WorkerJob = null;
+        worker.CurrentSystem = null;
     }
 }

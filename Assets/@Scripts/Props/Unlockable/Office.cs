@@ -2,11 +2,12 @@ using UnityEngine;
 using static Define;
 
 [RequireComponent(typeof(WorkerInteraction))]
-public class Office : MonoBehaviour
+public class Office : UnlockableBase
 {
 	private void Start()
 	{
-		// Door에서 Office를 호출하므로 여기서는 이벤트 연결 불필요
+		GetComponent<WorkerInteraction>().OnTriggerStart = OnEnterOffice;
+		GetComponent<WorkerInteraction>().OnTriggerEnd = OnLeaveOffice;		
 	}
 
 	public void OnEnterOffice(WorkerController wc)

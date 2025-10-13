@@ -62,7 +62,7 @@ public class UI_ConstructionArea : MonoBehaviour
         RefreshUI();
     }
 
-    void RefreshUI()
+    public void RefreshUI()
     {
         _slider.value = SpentMoney / (float)TotalUpgradeMoney;
         _moneyText.text = Utils.GetMoneyText(MoneyRemaining);

@@ -10,211 +10,225 @@ using static Define;
 
 public class MainCounterSystem : SystemBase
 {
-	public Grill Grill;
-	public Counter Counter;
-	public List<Table> Tables = new List<Table>();
-	public TrashCan TrashCan;
-	public List<WorkerController> Workers = new List<WorkerController>();
+    public Grill Grill;
+    public Counter Counter;
+    public List<Table> Tables = new List<Table>();
+    public TrashCan TrashCan;
+    public Office Office;
 
-	// 직원들이 담당하는 일들.
-	public WorkerController[] Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
+    // 직원들이 담당하는 일들.
+    public WorkerController[] Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
+    public override bool HasJob
+    {
+        get
+        {
+            for (int i = 0; i < (int)EMainCounterJob.MaxCount; i++)
+            {
+                EMainCounterJob type = (EMainCounterJob)i;
+                if (ShouldDoJob(type))
+                    return true;
+            }
 
-	private void Awake()
-	{
-		FindProps();
-	}
+            return false;
+        }
+    }
 
-	private void OnEnable()
-	{
-		GameManager.Instance.AddEventListener(EEventType.HireWorker, OnHireWorker);
-		GameManager.Instance.AddEventListener(EEventType.UnlockProp, FindProps);
-	}
+    private void Awake()
+    {
+        Counter.Owner = this;
+    }
 
-	private void OnDisable()
-	{
-		GameManager.Instance.RemoveEventListener(EEventType.HireWorker, OnHireWorker);
-		GameManager.Instance.RemoveEventListener(EEventType.UnlockProp, FindProps);
-	}
+    private void Update()
+    {
+        foreach (WorkerController worker in Workers)
+        {
+            if (worker.WorkerJob != null)
+                continue;
 
-	private void Update()
-	{
-	}
+            IEnumerator job = DoMainCounterWorkerJob(worker);
+            worker.DoJob(job);
+        }
+    }
 
-	void FindProps()
-	{
-		if (Grill == null)
-			Grill = Utils.FindChild<Grill>(gameObject, recursive: true);
-		if (Counter == null)
-			Counter = Utils.FindChild<Counter>(gameObject, recursive: true);
-		if (TrashCan == null)
-			TrashCan = Utils.FindChild<TrashCan>(gameObject, recursive: true);
+    #region Worker
+    public override void AddWorker(WorkerController worker)
+    {
+        base.AddWorker(worker);
+    }
 
-		Tables = gameObject.GetComponentsInChildren<Table>().ToList();
+    bool ShouldDoJob(EMainCounterJob jobType)
+    {
+        // 이미 다른 직원이 점유중이라면 스킵.
+        WorkerController wc = Jobs[(int)jobType];
+        if (wc != null)
+            return false;
 
-		if (Counter != null)
-			Counter.Owner = this;
-	}
+        // 일감이 있는지 확인.
+        switch (jobType)
+        {
+            case EMainCounterJob.MoveBurger:
+                {
+                    if (Grill == null)
+                        return false;
+                    if (Grill.CurrentWorker != null)
+                        return false;
+                    if (Grill.BurgerCount == 0)
+                        return false;
+                    if (Counter.NeedMoreBurgers == false)
+                        return false;
+                    return true;
+                }
+            case EMainCounterJob.CounterCashier:
+                {
+                    if (Counter == null)
+                        return false;
+                    if (Counter.CurrentCashierWorker != null)
+                        return false;
+                    if (Counter.NeedCashier == false)
+                        return false;
+                    if (Counter.FindTableToServeGuests() == null)
+                        return false;
 
-	#region Worker
-	void OnHireWorker()
-	{
-		GameObject go = GameManager.Instance.SpawnWorker();
-		WorkerController wc = go.GetComponent<WorkerController>();
-		go.transform.position = Vector3.zero;
+                    return true;
+                }
+            case EMainCounterJob.CleanTable:
+                {
+                    foreach (Table table in Tables)
+                    {
+                        if (table.TableState == ETableState.Dirty)
+                            return true;
+                    }
+                    return false;
+                }
+        }
 
-		// 나중에는 직원 배치를 여러 시스템(MainCounter, Drive-Thru 등)중 하나를 골라서 한다.
-		Workers.Add(wc);
+        return false;
+    }
 
-		StartCoroutine(DoMainCounterWorkerJob(wc));
-	}
+    IEnumerator DoMainCounterWorkerJob(WorkerController wc)
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(1);
 
-	bool ShouldDoJob(EMainCounterJob jobType)
-	{
-		// 이미 다른 직원이 점유중이라면 스킵.
-		WorkerController wc = Jobs[(int)jobType];
-		if (wc != null)
-			return false;
+            bool foundJob = false;
 
-		// 일감이 있는지 확인.
-		switch (jobType)
-		{
-			case EMainCounterJob.MoveBurger:
-				{
-					if (Grill == null)
-						return false;
-					if (Grill.CurrentWorker != null)
-						return false;
-					if (Grill.BurgerCount == 0)
-						return false;
-					if (Counter.NeedMoreBurgers == false)
-						return false;
-					return true;
-				}
-			case EMainCounterJob.CounterCashier:
-				{
-					if (Counter == null)
-						return false;
-					if (Counter.CurrentCashierWorker != null)
-						return false;
-					if (Counter.NeedCashier == false)
-						return false;
-					if (Counter.FindTableToServeGuests() == null)
-						return false;
+            // 햄버거 운반.
+            if (ShouldDoJob(EMainCounterJob.MoveBurger))
+            {
+                foundJob = true;
 
-					return true;
-				}
-			case EMainCounterJob.CleanTable:
-				{
-					foreach (Table table in Tables)
-					{
-						if (table.TableState == ETableState.Dirty)
-							return true;
-					}
-					return false;
-				}
-		}
+                // 일감 점유.
+                Jobs[(int)EMainCounterJob.MoveBurger] = wc;
 
-		return false;
-	}
+                // 그릴로 이동.
+                wc.SetDestination(Grill.WorkerPos.position, () =>
+                {
+                    wc.transform.rotation = Grill.WorkerPos.rotation;
+                });
 
-	IEnumerator DoMainCounterWorkerJob(WorkerController wc)
-	{
-		while (true)
-		{
-			yield return new WaitForSeconds(1);
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
 
-			// 햄버거 운반.
-			if (ShouldDoJob(EMainCounterJob.MoveBurger))
-			{
-				// 일감 점유.
-				Jobs[(int)EMainCounterJob.MoveBurger] = wc;
+                // 그릴 도착했으면 일정 시간 대기.
+                wc.transform.rotation = Grill.WorkerPos.rotation;
+                yield return new WaitForSeconds(3);
 
-				// 그릴로 이동.
-				wc.SetDestination(Grill.WorkerPos.position);
+                // 햄버거 수집했으면 카운터로 이동.
+                wc.SetDestination(Counter.BurgerWorkerPos.position, () =>
+                {
+                    wc.transform.rotation = Counter.BurgerWorkerPos.rotation;
+                });
 
-				// 가는중.
-				yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
 
-				// 그릴 도착했으면 일정 시간 대기.
-				wc.transform.rotation = Grill.WorkerPos.rotation;
-				yield return new WaitForSeconds(3);
+                // 카운터 도착했으면 일정 시간 대기.
+                wc.transform.rotation = Counter.BurgerWorkerPos.rotation;
+                yield return new WaitForSeconds(2);
 
-				// 햄버거 수집했으면 카운터로 이동.
-				wc.SetDestination(Counter.BurgerWorkerPos.position);
+                // 일감 점유 해제.
+                Jobs[(int)EMainCounterJob.MoveBurger] = null;
+            }
 
-				// 가는중.
-				yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+            // 카운터 계산대.
+            if (ShouldDoJob(EMainCounterJob.CounterCashier))
+            {
+                foundJob = true;
 
-				// 카운터 도착했으면 일정 시간 대기.
-				wc.transform.rotation = Counter.BurgerWorkerPos.rotation;
-				yield return new WaitForSeconds(2); // TODO : Tray에 MAX 수치 만들어지면, 다 채울 때까지로 수정.
+                // 일감 점유.
+                Jobs[(int)EMainCounterJob.CounterCashier] = wc;
 
-				// 일감 점유 해제.
-				Jobs[(int)EMainCounterJob.MoveBurger] = null;
-			}
+                // 계산대로 이동.
+                wc.SetDestination(Counter.CashierWorkerPos.position);
 
-			// 카운터 계산대.
-			if (ShouldDoJob(EMainCounterJob.CounterCashier))
-			{
-				// 일감 점유.
-				Jobs[(int)EMainCounterJob.CounterCashier] = wc;
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
 
-				// 계산대로 이동.
-				wc.SetDestination(Counter.CashierWorkerPos.position);
+                // 계산대 도착했으면 일정 시간 대기.
+                wc.transform.rotation = Counter.CashierWorkerPos.rotation;
+                yield return new WaitForSeconds(2);
 
-				// 가는중.
-				yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+                // 일감 점유 해제.
+                Jobs[(int)EMainCounterJob.CounterCashier] = null;
+            }
 
-				// 계산대 도착했으면 일정 시간 대기.
-				wc.transform.rotation = Counter.CashierWorkerPos.rotation;
-				yield return new WaitUntil(() => Counter.FindTableToServeGuests() == null);
+            // 테이블 청소.
+            if (ShouldDoJob(EMainCounterJob.CleanTable))
+            {
+                Table table = Tables.Where(t => t.TableState == ETableState.Dirty).FirstOrDefault();
+                if (table == null)
+                    continue;
 
-				// 일감 점유 해제.
-				Jobs[(int)EMainCounterJob.CounterCashier] = null;
-			}
+                foundJob = true;
 
-			// 테이블 청소.
-			if (ShouldDoJob(EMainCounterJob.CleanTable))
-			{
-				Table table = Tables.Where(t => t.TableState == ETableState.Dirty).FirstOrDefault();
-				if (table == null)
-					continue;
+                // 일감 점유.
+                Jobs[(int)EMainCounterJob.CleanTable] = wc;
 
-				// 일감 점유.
-				Jobs[(int)EMainCounterJob.CleanTable] = wc;
+                // 테이블로 이동.
+                wc.SetDestination(table.WorkerPos.position, () =>
+                {
+                    wc.transform.rotation = table.WorkerPos.rotation;
+                });
 
-				// 테이블로 이동.
-				wc.SetDestination(table.WorkerPos.position);
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
 
-				// 가는중.
-				yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+                // 테이블 도착했으면 일정 시간 대기.
+                wc.transform.rotation = table.WorkerPos.rotation;
+                yield return new WaitUntil(() => table.TableState != ETableState.Dirty);
 
-				// 테이블 도착했으면 일정 시간 대기.
-				wc.transform.rotation = table.WorkerPos.rotation;
-				yield return new WaitUntil(() => table.TableState != ETableState.Dirty);
+                // 쓰레기통으로 이동.
+                wc.SetDestination(TrashCan.WorkerPos.position, () =>
+                {
+                    wc.transform.rotation = TrashCan.WorkerPos.rotation;
+                });
 
-				// 쓰레기통으로 이동.
-				wc.SetDestination(TrashCan.WorkerPos.position);
+                // 쓰레기통 도착했으면 일정 시간 대기.
+                wc.transform.rotation = table.WorkerPos.rotation;
+                yield return new WaitUntil(() => wc.IsServing == false);
 
-				// 쓰레기통 도착했으면 일정 시간 대기.
-				wc.transform.rotation = table.WorkerPos.rotation;
-				yield return new WaitUntil(() => wc.IsServing == false);
+                // 일감 점유 해제.
+                Jobs[(int)EMainCounterJob.CleanTable] = null;
+            }
 
-				// 일감 점유 해제.
-				Jobs[(int)EMainCounterJob.CleanTable] = null;
-			}
-		}
-	}
+            // 일이 없으면 반납.
+            if (foundJob == false)
+            {
+                RemoveWorker(wc);
+            }
+        }
+    }
 
-	public bool HasEmptyCleanTable()
-	{
-		foreach (Table table in Tables)
-		{
-			if (table.TableState == ETableState.None)
-				return true;
-		}
+    public bool HasEmptyCleanTable()
+    {
+        foreach (Table table in Tables)
+        {
+            if (table.TableState == ETableState.None)
+                return true;
+        }
 
-		return false;
-	}
-	#endregion
+        return false;
+    }
+    #endregion
 }

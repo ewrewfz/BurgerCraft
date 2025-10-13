@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 8303090822990546365}
   - component: {fileID: 5986038294487946335}
   - component: {fileID: 3297627205561363408}
-  - component: {fileID: 793220876425912124}
   - component: {fileID: 435705654490905665}
+  - component: {fileID: 8251381223172442101}
   m_Layer: 0
   m_Name: TrashCan
   m_TagString: Untagged
@@ -90,19 +90,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &793220876425912124
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4082860857484612957}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2908b3c4fac317240950810771c6e713, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  WorkerPos: {fileID: 1445110119319086408}
 --- !u!65 &435705654490905665
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -124,6 +111,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.5800533, y: 1.6103349, z: 1.6391677}
   m_Center: {x: 0, y: 0.8141124, z: -0.3315819}
+--- !u!114 &8251381223172442101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4082860857484612957}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7b1c4f8296cb014eb43024d33affb1e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  WorkerPos: {fileID: 1445110119319086408}
 --- !u!1 &6241823193900139238
 GameObject:
   m_ObjectHideFlags: 0
@@ -165,7 +165,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6763348587434897274}
   - component: {fileID: 16140397167251252}
-  - component: {fileID: 3692286403979854409}
+  - component: {fileID: 6771611910830769015}
   m_Layer: 0
   m_Name: PlayerInteraction
   m_TagString: Untagged
@@ -209,7 +209,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3, y: 3, z: 3}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3692286403979854409
+--- !u!114 &6771611910830769015
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -218,7 +218,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 7036872566718430950}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 780ca8a9b1f3077419c1c267ce99bb5c, type: 3}
+  m_Script: {fileID: 11500000, guid: 21e9dee43133316449be23face3d1c3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   InteractInterval: 0.5
