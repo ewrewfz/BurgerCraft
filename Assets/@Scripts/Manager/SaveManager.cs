@@ -10,7 +10,7 @@ using static Define;
 public class GameSaveData
 {
 	// 소지금.
-	public long Money = 0;
+	public long Money = 100000;
 
 	// 플레이어 위치.
 	public int RestaurantIndex;
@@ -64,7 +64,7 @@ public class SaveManager : Singleton<SaveManager>
 			return;
 
 		// 소지금.
-		_saveData.Money = 1000;
+		_saveData.Money = 100000;
 
 		// 각종 업그레이드.
 

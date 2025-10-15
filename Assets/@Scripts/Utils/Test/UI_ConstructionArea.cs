@@ -30,7 +30,7 @@ public class UI_ConstructionArea : MonoBehaviour
 
         // TODO : 데이터 참고해서 업그레이드 비용 설정.
         SpentMoney = 0;
-        TotalUpgradeMoney = 10000;
+        TotalUpgradeMoney = 0;
 
         RefreshUI();
     }
