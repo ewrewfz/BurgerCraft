@@ -651,7 +651,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
+  m_PresetInfoIsWorld: 1
 --- !u!114 &2520929182006979060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -684,7 +684,6 @@ MonoBehaviour:
   _slider: {fileID: 5753456761809115112}
   _moneyText: {fileID: 5942213960707919083}
   Owner: {fileID: 0}
-  SpentMoney: 0
   TotalUpgradeMoney: 0
 --- !u!65 &2028982518336250015
 BoxCollider:

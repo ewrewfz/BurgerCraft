@@ -57,7 +57,7 @@ public class Grill : UnlockableBase
 		}
 	}
 
-	void OnWorkerBurgerInteraction(WorkerController pc)
+	public void OnWorkerBurgerInteraction(WorkerController pc)
 	{
 		// 쓰레기 운반 상태에선 안 됨.
 		if (pc.Tray.CurrentTrayObjectType == Define.EObjectType.Trash)

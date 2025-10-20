@@ -132,6 +132,10 @@ public class MainCounterSystem : SystemBase
 
                 // 그릴 도착했으면 일정 시간 대기.
                 wc.transform.rotation = Grill.WorkerPos.rotation;
+                
+                // 버거를 트레이에 쌓기
+                Grill.OnWorkerBurgerInteraction(wc);
+
                 yield return new WaitForSeconds(3);
 
                 // 햄버거 수집했으면 카운터로 이동.

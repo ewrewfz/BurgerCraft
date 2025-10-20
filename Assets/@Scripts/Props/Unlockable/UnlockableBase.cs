@@ -19,12 +19,17 @@ public class UnlockableBase : MonoBehaviour
         ConstructionArea.RefreshUI();
     }
 
-    EUnlockedState State
+    public EUnlockedState State
     {
         get { return _data.State; }
         set { _data.State = value; }
     }
 
+    //EUnlockedState State
+    //{
+    //    get { return _data != null ? _data.State : EUnlockedState.Hidden; }
+    //    set { if (_data != null) _data.State = value; }
+    //}
     public bool IsUnlocked => State == EUnlockedState.Unlocked;
     public long SpentMoney
     {

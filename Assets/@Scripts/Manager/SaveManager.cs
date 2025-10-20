@@ -10,7 +10,7 @@ using static Define;
 public class GameSaveData
 {
 	// 소지금.
-	public long Money = 0;
+	public long Money = 10000;
 
 	// 플레이어 위치.
 	public int RestaurantIndex;
@@ -37,7 +37,7 @@ public class RestaurantData
 public class UnlockableStateData
 {
 	public EUnlockedState State = EUnlockedState.Hidden;
-	public long SpentMoney = 0;
+	public long SpentMoney = 10000;
 }
 #endregion
 
