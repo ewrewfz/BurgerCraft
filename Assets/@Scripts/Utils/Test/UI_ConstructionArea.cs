@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,26 +14,22 @@ public class UI_ConstructionArea : MonoBehaviour
     TextMeshProUGUI _moneyText;
 
     public UnlockableBase Owner;
-    public long SpentMoney;
     public long TotalUpgradeMoney;
     public long MoneyRemaining => TotalUpgradeMoney - SpentMoney;
+
+    public long SpentMoney
+    {
+        get { return Owner.SpentMoney; }
+        set { Owner.SpentMoney = value; }
+    }
 
     void Start()
     {
         GetComponent<WorkerInteraction>().OnInteraction = OnWorkerInteraction;
         GetComponent<WorkerInteraction>().InteractInterval = Define.CONSTRUCTION_UPGRADE_INTERVAL;
 
-        if (Owner == null)
-            Owner = Utils.FindChild<UnlockableBase>(transform.root.gameObject);
-
-        // 잠시 건물은 꺼둠.
-        Owner.gameObject.SetActive(false);
-
         // TODO : 데이터 참고해서 업그레이드 비용 설정.
-        SpentMoney = 0;
-        TotalUpgradeMoney = 0;
-
-        RefreshUI();
+        TotalUpgradeMoney = 50;
     }
 
     public void OnWorkerInteraction(WorkerController wc)
@@ -41,6 +38,8 @@ public class UI_ConstructionArea : MonoBehaviour
             return;
 
         long money = (long)(TotalUpgradeMoney / (1 / Define.CONSTRUCTION_UPGRADE_INTERVAL));
+        if (money == 0)
+            money = 1;
 
         if (GameManager.Instance.Money < money)
             return;
@@ -53,8 +52,7 @@ public class UI_ConstructionArea : MonoBehaviour
             SpentMoney = TotalUpgradeMoney;
 
             // 해금 완료.
-            Owner.gameObject.SetActive(true);
-            gameObject.SetActive(false);
+            Owner.SetUnlockedState(EUnlockedState.Unlocked);
 
             GameManager.Instance.BroadcastEvent(EEventType.UnlockProp);
         }
@@ -67,5 +65,4 @@ public class UI_ConstructionArea : MonoBehaviour
         _slider.value = SpentMoney / (float)TotalUpgradeMoney;
         _moneyText.text = Utils.GetMoneyText(MoneyRemaining);
     }
-
 }
