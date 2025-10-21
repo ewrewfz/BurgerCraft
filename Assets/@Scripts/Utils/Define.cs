@@ -64,7 +64,7 @@ public static class Define
     public const float GUEST_SPAWN_INTERVAL = 1f;
     public const int GUEST_MAX_ORDER_BURGER_COUNT = 2;
 
-    public static Vector3 WORKER_SPAWN_POS = new Vector3(0, 0, 0);
+    public static Vector3 WORKER_SPAWN_POS = new Vector3(24.33f, 0, 21.42f);
     public static Vector3 GUEST_LEAVE_POS = new Vector3(0, 0, 0);
 
     public static int IDLE = Animator.StringToHash("Idle");

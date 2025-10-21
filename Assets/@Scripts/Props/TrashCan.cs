@@ -2,8 +2,6 @@ using DG.Tweening;
 using NUnit.Framework.Internal;
 using UnityEngine;
 using static Define;
-using static UnityEditor.Progress;
-
 // 1. 쓰레기 버리는 Trigger
 public class TrashCan : MonoBehaviour
 {

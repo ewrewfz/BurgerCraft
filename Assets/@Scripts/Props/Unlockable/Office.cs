@@ -12,7 +12,10 @@ public class Office : UnlockableBase
 
 	public void OnEnterOffice(WorkerController wc)
 	{
-		GameManager.Instance.UpgradeEmployeePopup.gameObject.SetActive(true);
+		if (wc.Tray.IsPlayer)
+		{
+			GameManager.Instance.UpgradeEmployeePopup.gameObject.SetActive(true);
+		}
 	}
 
 	public void OnLeaveOffice(WorkerController wc)

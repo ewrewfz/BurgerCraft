@@ -19,7 +19,7 @@ public class UI_UpgradeEmployeePopup : MonoBehaviour
     {
 		_closeButton.onClick.AddListener(OnClickCloseButton);
 
-		_hireItem.SetInfo(EUpgradeEmployeePopupItemType.Hire, 1000);
+		_hireItem.SetInfo(EUpgradeEmployeePopupItemType.Hire, 1);
 	}
 
 	void OnClickCloseButton()
