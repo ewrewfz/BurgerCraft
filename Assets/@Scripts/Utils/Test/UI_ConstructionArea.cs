@@ -29,7 +29,7 @@ public class UI_ConstructionArea : MonoBehaviour
         GetComponent<WorkerInteraction>().InteractInterval = Define.CONSTRUCTION_UPGRADE_INTERVAL;
 
         // TODO : 데이터 참고해서 업그레이드 비용 설정.
-        TotalUpgradeMoney = 50;
+        TotalUpgradeMoney = 1;
     }
 
     public void OnWorkerInteraction(WorkerController wc)
