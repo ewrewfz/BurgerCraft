@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 9067701800657861612}
   - component: {fileID: 8341109182711326001}
   - component: {fileID: -6996423047569023074}
+  - component: {fileID: 7635405498979848549}
   m_Layer: 5
   m_Name: UI_WorkZone
   m_TagString: Untagged
@@ -87,7 +88,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &9067701800657861612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120,7 +121,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -140,6 +141,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   InteractInterval: 0.5
   CurrentWorker: {fileID: 0}
+--- !u!114 &7635405498979848549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4355823731386207517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5af9d4d31e5c22442805698e2d7ee90b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  activeImage: {fileID: 6664015017356952161}
+  deActiveImage: {fileID: 7396567898323200434}
 --- !u!1 &6664015017356952161
 GameObject:
   m_ObjectHideFlags: 0
@@ -157,7 +172,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &2529377026212311876
 RectTransform:
   m_ObjectHideFlags: 0

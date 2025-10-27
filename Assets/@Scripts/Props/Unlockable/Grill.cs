@@ -47,16 +47,19 @@ public class Grill : UnlockableBase
 
 	IEnumerator CoSpawnBurgers()
 	{
-		MaxObject.SetActive(true);
-		yield return new WaitUntil(() => _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT);
-
-		if (StopSpawnBurger == false)
+		while(true)
 		{
-			 MaxObject.SetActive(false);
-			_burgers.SpawnObject();
-		}
+          
+            yield return new WaitUntil(() => _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT);
 
-		yield return new WaitForSeconds(Define.GRILL_SPAWN_BURGER_INTERVAL);
+            if (StopSpawnBurger == false)
+            {
+                _burgers.SpawnObject();
+            }
+
+            yield return new WaitForSeconds(Define.GRILL_SPAWN_BURGER_INTERVAL);
+        }
+	
 	}
 
 	public void OnWorkerBurgerInteraction(WorkerController pc)
