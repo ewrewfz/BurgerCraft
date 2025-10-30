@@ -102,6 +102,10 @@ public class TrayController : MonoBehaviour
         if (CurrentTrayObjectType != EObjectType.None && CurrentTrayObjectType != objectType)
             return;
 
+        // 그릴/버거 -> 최대 적재 개수 제한
+        if (objectType == EObjectType.Burger && TotalItemCount >= Define.MAX_BURGER_ADD_COUNT)
+            return;
+     
         CurrentTrayObjectType = objectType;
 
         _reserved.Add(child);
