@@ -49,17 +49,24 @@ public class Grill : UnlockableBase
 	{
 		while(true)
 		{
-          
+			// 최대치 미만이 될 때까지 대기 (여기 도달했다는 것은 미만 상태)
             yield return new WaitUntil(() => _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT);
 
-            if (StopSpawnBurger == false)
-            {
-                _burgers.SpawnObject();
-            }
+			// 미만이면 꺼준다
+			if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+				MaxObject.SetActive(false);
 
-            yield return new WaitForSeconds(Define.GRILL_SPAWN_BURGER_INTERVAL);
-        }
-	
+			if (StopSpawnBurger == false)
+			{
+				_burgers.SpawnObject();
+
+				// 스폰 후 최대치 도달 시 켠다
+				if (MaxObject != null && _burgers.ObjectCount == Define.GRILL_MAX_BURGER_COUNT)
+					MaxObject.SetActive(true);
+			}
+
+			yield return new WaitForSeconds(Define.GRILL_SPAWN_BURGER_INTERVAL);
+		}
 	}
 
 	public void OnWorkerBurgerInteraction(WorkerController pc)
@@ -69,5 +76,9 @@ public class Grill : UnlockableBase
 			return;
 
 		_burgers.PileToTray(pc.Tray);
+
+		// 가져가서 개수가 줄어들었으면 끈다
+		if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+			MaxObject.SetActive(false);
 	}
 }

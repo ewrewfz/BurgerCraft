@@ -55,7 +55,7 @@ public static class Define
         MaxCount,
     }
 
-    public const float GRILL_SPAWN_BURGER_INTERVAL = 0.5f;
+    public const float GRILL_SPAWN_BURGER_INTERVAL = 3f;
     public const int GRILL_MAX_BURGER_COUNT = 2;
     public const int MAX_BURGER_ADD_COUNT = 2;
 
