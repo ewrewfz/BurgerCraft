@@ -73,4 +73,78 @@ public static class Define
     public static int SERVING_IDLE = Animator.StringToHash("ServingIdle");
     public static int SERVING_MOVE = Animator.StringToHash("ServingMove");
     public static int EATING = Animator.StringToHash("Eating");
+
+    // 주문 관련 상수
+    public const int ORDER_MAX_PATTY_COUNT = 2;
+    public const int ORDER_MAX_CHEESE_COUNT = 2;
+    public const int ORDER_MAX_VEGGIES_TOTAL = 4;
+    public const int ORDER_MAX_SAUCE1_COUNT = 2;
+    public const int ORDER_MAX_SAUCE2_COUNT = 2;
+
+    // 가격(단가)
+    public const int PRICE_BREAD = 15;   // 빵 1개
+    public const int PRICE_TOMATO = 8;   // 토마토 1장
+    public const int PRICE_PATTY = 10;   // 고기 1장
+    public const int PRICE_LETTUCE = 6;  // 양상추 1장
+    public const int PRICE_SAUCE1 = 2;   // 소스1 1회
+    public const int PRICE_SAUCE2 = 2;   // 소스2 1회
+
+    // 주문/재료 정의
+    public enum EBreadType
+    {
+        None,
+        Sesame,
+        Plain,
+    }
+
+    public enum EPattyType
+    {
+        None,
+        Beef,
+        Chicken,
+    }
+
+    public enum ECheeseType
+    {
+        None,
+        Cheddar,
+        Swiss,
+    }
+
+    public enum EVeggieType
+    {
+        None,
+        Lettuce,
+        Tomato,
+        Onion,
+        Pickle,
+    }
+
+    public enum ESauceType
+    {
+        None,
+        Sauce1,
+        Sauce2,
+    }
+
+    public struct BurgerRecipe
+    {
+        // 빵은 상/하단 2개 고정으로 간주 (Bread는 종류만 표시)
+        public EBreadType Bread;
+        public EPattyType Patty;
+        public int PattyCount;   // 0 ~ ORDER_MAX_PATTY_COUNT
+        public ECheeseType Cheese;
+        public int CheeseCount;  // 0 ~ ORDER_MAX_CHEESE_COUNT
+        // 야채는 중복 원소 허용하여 개수 표현
+        public List<EVeggieType> Veggies;
+        // 소스 수량
+        public int Sauce1Count;  // 0 ~ ORDER_MAX_SAUCE1_COUNT
+        public int Sauce2Count;  // 0 ~ ORDER_MAX_SAUCE2_COUNT
+    }
+
+    public struct BurgerOrder
+    {
+        public BurgerRecipe Requested;
+        public int FailCount; // 실패 카운트(3회 시 퇴장)
+    }
 }

@@ -6,12 +6,13 @@ public class LoadingScene : MonoBehaviour
 {
     void Start()
     {
-		//StartCoroutine(LoadSceneAsync("DevScene"));
-		SceneManager.LoadScene("DevScene");
+		StartCoroutine(LoadSceneAsync("DevScene"));
     }
 
     private IEnumerator LoadSceneAsync(string sceneName)
 	{
+		yield return new WaitForSeconds(5f);
+
 		AsyncOperation asyncOperation = SceneManager.LoadSceneAsync(sceneName);
 
 		while (asyncOperation.isDone == false)
