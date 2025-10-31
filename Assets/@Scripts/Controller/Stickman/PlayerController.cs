@@ -24,6 +24,13 @@ public class PlayerController : WorkerController
         {
             // 이동.
             _controller.Move(moveDir * Time.deltaTime * _moveSpeed);
+            
+            // CharacterController.Move()가 충돌이나 Step Offset으로 Y축을 올린 경우 즉시 보정.
+            Vector3 pos = transform.position;
+            if (Mathf.Abs(pos.y) > 0.01f)
+            {
+                transform.position = new Vector3(pos.x, 0, pos.z);
+            }
 
             // 고개 돌리기.
             Quaternion lookRotation = Quaternion.LookRotation(moveDir);
