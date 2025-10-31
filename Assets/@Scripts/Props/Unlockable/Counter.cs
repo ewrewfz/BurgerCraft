@@ -203,7 +203,12 @@ public class Counter : UnlockableBase
 		for (int i = 0; i < _nextOrderBurgerCount; i++)
 		{
 			GuestController guest = _queueGuests[i];
-			guest.SetDestination(destTable.Chairs[i].position); // 의자로 향해 이동.
+			
+			// 의자의 자식인 SeatPoint 위치로 이동.
+			Transform seatPoint = Utils.FindChild<Transform>(destTable.Chairs[i].gameObject, "SeatPoint");
+			Vector3 destination = seatPoint != null ? seatPoint.position : destTable.Chairs[i].position;
+			guest.SetDestination(destination);
+			
 			guest.GuestState = Define.EGuestState.Serving;
 			guest.OrderCount = 0;
 
