@@ -16,8 +16,22 @@ using UnityEngine;
 // 6. 버거를 가지고 테이블로 이동
 // 7. 테이블 청소 시스템 
 // -> 제한 시간 내 테이블 위에 있는 쓰레기 터치 하기 (쟁반 쌓기)
-public class UI_OrderSystem : MonoBehaviour
+public class UI_OrderSystem : GameManager
 {
+    // 현재 제작 중인 레시피를 초기화하는 헬퍼 메서드
+    public static Define.BurgerRecipe CreateEmptyRecipe()
+    {
+        return new Define.BurgerRecipe
+        {
+            Bread = Define.EBreadType.Sesame,
+            Patty = Define.EPattyType.None,
+            PattyCount = 0,
+            Veggies = new List<Define.EVeggieType>(),
+            Sauce1Count = 0,
+            Sauce2Count = 0,
+        };
+    }
+    
     public static Define.BurgerRecipe GenerateRandomRecipe()
     {
         // 빵 2개 고정: Bread는 종류만 선택, 개수는 고정 컨벤션
@@ -26,8 +40,6 @@ public class UI_OrderSystem : MonoBehaviour
             Bread = GetRandomBread(),
             Patty = GetRandomPatty(),
             PattyCount = GetRandomCount(0, Define.ORDER_MAX_PATTY_COUNT),
-            Cheese = GetRandomCheese(),
-            CheeseCount = GetRandomCount(0, Define.ORDER_MAX_CHEESE_COUNT),
             Veggies = GenerateRandomVeggiesMulti(),
             Sauce1Count = GetRandomCount(0, Define.ORDER_MAX_SAUCE1_COUNT),
             Sauce2Count = GetRandomCount(0, Define.ORDER_MAX_SAUCE2_COUNT),
@@ -43,8 +55,6 @@ public class UI_OrderSystem : MonoBehaviour
         if (crafted.Bread != requested.Bread) return false; // 빵 종류만 비교 (수량은 2개 고정 컨벤션)
         if (crafted.Patty != requested.Patty) return false;
         if (crafted.PattyCount != requested.PattyCount) return false;
-        if (crafted.Cheese != requested.Cheese) return false;
-        if (crafted.CheeseCount != requested.CheeseCount) return false;
         if (crafted.Sauce1Count != requested.Sauce1Count) return false;
         if (crafted.Sauce2Count != requested.Sauce2Count) return false;
 
@@ -66,7 +76,6 @@ public class UI_OrderSystem : MonoBehaviour
         var parts = new List<string>();
         parts.Add($"빵:{recipe.Bread} x2");
         parts.Add($"패티:{(recipe.Patty == Define.EPattyType.None || recipe.PattyCount == 0 ? "없음" : $"{recipe.Patty} x{recipe.PattyCount}")}");
-        parts.Add($"치즈:{(recipe.Cheese == Define.ECheeseType.None || recipe.CheeseCount == 0 ? "없음" : $"{recipe.Cheese} x{recipe.CheeseCount}")}");
 
         if (recipe.Veggies != null && recipe.Veggies.Count > 0)
         {
@@ -102,8 +111,6 @@ public class UI_OrderSystem : MonoBehaviour
         // 패티
         total += recipe.PattyCount * Define.PRICE_PATTY;
         // 치즈: 치즈 타입이 None이면 0원
-        if (recipe.Cheese != Define.ECheeseType.None)
-            total += recipe.CheeseCount * 0; // 치즈 가격이 정의되어 있지 않음 -> 필요 시 추가
         // 야채
         if (recipe.Veggies != null)
         {
@@ -115,12 +122,6 @@ public class UI_OrderSystem : MonoBehaviour
                         total += Define.PRICE_TOMATO; break;
                     case Define.EVeggieType.Lettuce:
                         total += Define.PRICE_LETTUCE; break;
-                    case Define.EVeggieType.Onion:
-                        // 양파 가격 미정 -> 0 처리 또는 상수 추가 가능
-                        break;
-                    case Define.EVeggieType.Pickle:
-                        // 피클 가격 미정 -> 0 처리 또는 상수 추가 가능
-                        break;
                 }
             }
         }
@@ -194,7 +195,7 @@ public class UI_OrderSystem : MonoBehaviour
     private static List<Define.EVeggieType> GenerateRandomVeggiesMulti()
     {
         var veggies = new List<Define.EVeggieType>();
-        var types = new[] { Define.EVeggieType.Lettuce, Define.EVeggieType.Tomato, Define.EVeggieType.Onion, Define.EVeggieType.Pickle };
+        var types = new[] { Define.EVeggieType.Lettuce, Define.EVeggieType.Tomato};
         foreach (var t in types)
         {
             // 50% 확률로 채택

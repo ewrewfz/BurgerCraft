@@ -118,8 +118,6 @@ public static class Define
         None,
         Lettuce,
         Tomato,
-        Onion,
-        Pickle,
     }
 
     public enum ESauceType
@@ -135,8 +133,6 @@ public static class Define
         public EBreadType Bread;
         public EPattyType Patty;
         public int PattyCount;   // 0 ~ ORDER_MAX_PATTY_COUNT
-        public ECheeseType Cheese;
-        public int CheeseCount;  // 0 ~ ORDER_MAX_CHEESE_COUNT
         // 야채는 중복 원소 허용하여 개수 표현
         public List<EVeggieType> Veggies;
         // 소스 수량
