@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using static Define;
+using DG.Tweening;
 
 public class UI_GameScene : MonoBehaviour
 {
@@ -31,5 +32,7 @@ public class UI_GameScene : MonoBehaviour
 	{
 		_toastMessageText.text = message;
 		_toastMessageText.enabled = (string.IsNullOrEmpty(message) == false);
+
+		
 	}
 }

@@ -16,7 +16,7 @@ using UnityEngine;
 // 6. 버거를 가지고 테이블로 이동
 // 7. 테이블 청소 시스템 
 // -> 제한 시간 내 테이블 위에 있는 쓰레기 터치 하기 (쟁반 쌓기)
-public class UI_OrderSystem : GameManager
+public class UI_OrderSystem : MonoBehaviour
 {
     public static Define.BurgerRecipe GenerateRandomRecipe()
     {

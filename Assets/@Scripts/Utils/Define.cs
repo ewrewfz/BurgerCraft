@@ -68,6 +68,8 @@ public static class Define
     public static Vector3 WORKER_SPAWN_POS = new Vector3(24.33f, 0, 21.42f);
     public static Vector3 GUEST_LEAVE_POS = new Vector3(0, 0, 0);
 
+
+    // 애니메이션 관련
     public static int IDLE = Animator.StringToHash("Idle");
     public static int MOVE = Animator.StringToHash("Move");
     public static int SERVING_IDLE = Animator.StringToHash("ServingIdle");
