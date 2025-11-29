@@ -18,7 +18,7 @@ public class OrderButton : MonoBehaviour
     [SerializeField] private EOrderButtonType _buttonType;
     
     // Bread 설정
-    [SerializeField] private EBreadType _breadType = EBreadType.Sesame;
+    [SerializeField] private EBreadType _breadType = EBreadType.Plain;
     
     // Patty 설정
     [SerializeField] private EPattyType _pattyType = EPattyType.Beef;
@@ -99,7 +99,7 @@ public class OrderButton : MonoBehaviour
         switch (_buttonType)
         {
             case EOrderButtonType.Bread:
-                return _breadType == EBreadType.Sesame ? "참깨빵" : "빵";
+                return _breadType == EBreadType.Plain ? "참깨빵" : "빵";
             case EOrderButtonType.Patty:
                 return _pattyType == EPattyType.Beef ? "소고기패티" : "닭고기패티";
             case EOrderButtonType.Veggie:

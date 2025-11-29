@@ -84,10 +84,10 @@ public static class Define
     public const int ORDER_MAX_SAUCE2_COUNT = 2;
 
     // 가격(단가)
-    public const int PRICE_BREAD = 15;   // 빵 1개
-    public const int PRICE_TOMATO = 8;   // 토마토 1장
+    public const int PRICE_BREAD = 3;   // 빵 1개
+    public const int PRICE_TOMATO = 3;   // 토마토 1장
     public const int PRICE_PATTY = 10;   // 고기 1장
-    public const int PRICE_LETTUCE = 6;  // 양상추 1장
+    public const int PRICE_LETTUCE = 3;  // 양상추 1장
     public const int PRICE_SAUCE1 = 2;   // 소스1 1회
     public const int PRICE_SAUCE2 = 2;   // 소스2 1회
 
@@ -95,7 +95,6 @@ public static class Define
     public enum EBreadType
     {
         None,
-        Sesame,
         Plain,
     }
 
