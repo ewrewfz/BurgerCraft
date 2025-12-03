@@ -22,6 +22,10 @@ public class GuestController : StickmanController
     }
 
     public int CurrentDestQueueIndex;
+    
+    // 실패 카운트 (3회 실패 시 떠남)
+    private int _failCount = 0;
+    public int FailCount => _failCount;
 
     protected override void Awake()
     {
@@ -49,5 +53,38 @@ public class GuestController : StickmanController
         {
             _navMeshAgent.isStopped = true;
         }
+    }
+    
+    /// <summary>
+    /// 실패 카운트를 증가시킵니다.
+    /// </summary>
+    public void AddFailCount()
+    {
+        _failCount++;
+    }
+    
+    /// <summary>
+    /// 실패 카운트를 초기화합니다. (주문 성공 시 호출)
+    /// </summary>
+    public void ResetFailCount()
+    {
+        _failCount = 0;
+    }
+    
+    /// <summary>
+    /// 3회 실패로 인해 손님이 떠나도록 합니다.
+    /// </summary>
+    public void LeaveDueToFailures()
+    {
+        if (GuestState == EGuestState.Leaving)
+        {
+            return;
+        }
+        
+        GuestState = EGuestState.Leaving;
+        SetDestination(Define.GUEST_LEAVE_POS, () =>
+        {
+            GameManager.Instance.DespawnGuest(gameObject);
+        });
     }
 }

@@ -874,6 +874,7 @@ MonoBehaviour:
   _paymentButton: {fileID: 2902065265995118141}
   _buttonsParent: {fileID: 1665804128753338403}
   _orderCompletePrefab: {fileID: 2305439622377201247, guid: ef1c035f3888c284dbfbe126073c93b9, type: 3}
+  _orderFailPrefab: {fileID: 4767804568502840247, guid: a7f65ba03b8c8bb459431c87f5e94107, type: 3}
 --- !u!1 &3416185468632684632
 GameObject:
   m_ObjectHideFlags: 0

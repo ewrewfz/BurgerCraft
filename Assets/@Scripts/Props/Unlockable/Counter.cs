@@ -44,6 +44,8 @@ public class Counter : UnlockableBase
 	[SerializeField]
 	public Transform GuestSpawnPos;
 
+
+
 	void Start()
     {
 		_burgerPile = Utils.FindChild<BurgerPile>(gameObject);
@@ -111,8 +113,17 @@ public class Counter : UnlockableBase
 			_queueGuests.Add(guest);
 		}
 	}
+    public GuestController GetFirstGuest()
+    {
+        if (_queueGuests.Count > 0)
+        {
+            return _queueGuests[0];
+        }
+        return null;
+    }
 
-	IEnumerator CoSpawnMoney()
+
+    IEnumerator CoSpawnMoney()
 	{
 		while (true)
 		{
@@ -128,7 +139,7 @@ public class Counter : UnlockableBase
 	}
 
 	#region GuestAI
-	private void UpdateGuestQueueAI()
+	public void UpdateGuestQueueAI()
 	{
 		// 줄서기 관리.
 		for (int i = 0; i < _queueGuests.Count; i++)
@@ -227,6 +238,45 @@ public class Counter : UnlockableBase
 
 		// 주문 처리 끝났으므로 0으로 리셋.
 		_nextOrderBurgerCount = 0;
+	}
+
+	/// <summary>
+	/// 주문 완료 시 손님을 처리합니다. (테이블로 보내거나 스폰 위치로 돌려보냄)
+	/// </summary>
+	public void ProcessOrderComplete(GuestController guest, bool failOrder)
+	{
+		if (guest == null || !_queueGuests.Contains(guest))
+			return;
+		
+		if (failOrder)
+		{
+			// 실패 시 스폰 위치로 돌아가기
+			guest.SetDestination(GuestSpawnPos.position, () =>
+			{
+				GameManager.Instance.DespawnGuest(guest.gameObject);
+			});
+			guest.GuestState = Define.EGuestState.Leaving;
+			
+			// 큐에서 제거
+			_queueGuests.Remove(guest);
+			
+			// 주문 리셋
+			_nextOrderBurgerCount = 0;
+		}
+		else
+		{
+			// 성공 시 기존 로직대로 테이블로 보내기
+			// 첫 번째 손님만 테이블로 보내기
+			int guestIndex = _queueGuests.IndexOf(guest);
+			if (guestIndex == 0)
+			{
+				_nextOrderBurgerCount = 1;
+				guest.OrderCount = 1;
+				
+				// 기존 OnGuestInteraction 로직 사용
+				OnGuestInteraction(null);
+			}
+		}
 	}
 
 	public Table FindTableToServeGuests()
