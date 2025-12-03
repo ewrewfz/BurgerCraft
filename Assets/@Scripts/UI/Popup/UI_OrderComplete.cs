@@ -14,6 +14,10 @@ public class UI_OrderComplete : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _TipText;
     [SerializeField] private TextMeshProUGUI _TotalPriceText;
     [SerializeField] private Button _closeButton;
+
+    [Header("Animation")]
+    [SerializeField] private Image _StarImage;
+
     
     private const int TIP_AMOUNT = 2; // 팁 2원 고정
     
@@ -63,6 +67,8 @@ public class UI_OrderComplete : MonoBehaviour
             rectTransform.localScale = Vector3.zero;
             rectTransform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
         }
+        _StarImage.gameObject.transform.DOLocalMoveY(650f,1.5f);
+        
     }
     
     public void Hide()
