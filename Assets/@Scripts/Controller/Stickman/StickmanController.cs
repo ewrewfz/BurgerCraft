@@ -110,6 +110,9 @@ public class StickmanController : MonoBehaviour
 	{
 		set
 		{
+			if (_orderBubble == null)
+				return;
+				
 			_orderBubble.Count = value;
 
 			if (value > 0)

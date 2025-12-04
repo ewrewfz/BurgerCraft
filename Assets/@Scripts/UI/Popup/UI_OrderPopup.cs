@@ -407,20 +407,13 @@ public class UI_OrderPopup : MonoBehaviour
             {
                 OnOrderComplete(_currentRecipe);
             }
+            
+            // OrderPopup 파괴 (성공 시)
+            DestroyOrderPopup();
         }
         else
         {
-            // 주문 실패 처리 - 스폰 위치로 돌려보내기
-            if (_currentGuest != null)
-            {
-                Counter counter = FindObjectOfType<Counter>();
-                if (counter != null)
-                {
-                    counter.ProcessOrderComplete(_currentGuest, true);
-                }
-            }
-            
-            // 실패 팝업 표시
+            // 주문 실패 처리 - 실패 팝업 표시 (ShowOrderFailPopup에서 실패 카운트 확인 후 처리)
             ShowOrderFailPopup();
         }
         
@@ -502,7 +495,7 @@ public class UI_OrderPopup : MonoBehaviour
         // 3회 실패 시 팝업을 표시하지 않고 바로 손님이 스폰 위치로 돌아가도록 처리
         if (currentFailCount >= 3)
         {
-            // 기존 팝업이 있으면 파괴
+            // 기존 실패 팝업이 있으면 파괴
             if (_currentFailPopup != null)
             {
                 try
@@ -518,6 +511,9 @@ public class UI_OrderPopup : MonoBehaviour
                 }
                 _currentFailPopup = null;
             }
+            
+            // OrderPopup 파괴 (3회 실패 시)
+            DestroyOrderPopup();
             
             // 손님이 스폰 위치로 돌아가도록 처리
             Counter counter = FindObjectOfType<Counter>();
@@ -750,6 +746,20 @@ public class UI_OrderPopup : MonoBehaviour
         _currentGuest = guest;
     }
     
+
+    private void DestroyOrderPopup()
+    {
+        if (_textDisplayCoroutine != null)
+        {
+            StopCoroutine(_textDisplayCoroutine);
+            _textDisplayCoroutine = null;
+        }
+        
+        if (gameObject != null)
+        {
+            Destroy(gameObject);
+        }
+    }
     
     public Define.BurgerRecipe GetCurrentRecipe()
     {

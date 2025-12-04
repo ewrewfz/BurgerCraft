@@ -81,10 +81,14 @@ public class GuestController : StickmanController
             return;
         }
         
+        OrderCount = 0;
+        
+
         GuestState = EGuestState.Leaving;
         SetDestination(Define.GUEST_LEAVE_POS, () =>
         {
             GameManager.Instance.DespawnGuest(gameObject);
         });
+
     }
 }

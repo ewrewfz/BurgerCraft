@@ -257,6 +257,9 @@ public class Counter : UnlockableBase
 			});
 			guest.GuestState = Define.EGuestState.Leaving;
 			
+			// 주문 버블 비활성화
+			guest.OrderCount = 0;
+			
 			// 큐에서 제거
 			_queueGuests.Remove(guest);
 			
