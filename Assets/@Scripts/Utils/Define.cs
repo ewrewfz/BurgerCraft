@@ -105,13 +105,6 @@ public static class Define
         Chicken,
     }
 
-    public enum ECheeseType
-    {
-        None,
-        Cheddar,
-        Swiss,
-    }
-
     public enum EVeggieType
     {
         None,

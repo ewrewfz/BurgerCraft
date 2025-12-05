@@ -45,6 +45,18 @@ public class UI_OrderSystem : GameManager
             Sauce1Count = GetRandomCount(0, Define.ORDER_MAX_SAUCE1_COUNT),
             Sauce2Count = GetRandomCount(0, Define.ORDER_MAX_SAUCE2_COUNT),
         };
+        
+        // 안전장치: pattyCount와 Patty 값의 일관성 보장
+        if (recipe.PattyCount == 0)
+        {
+            recipe.Patty = Define.EPattyType.None;
+        }
+        else if (recipe.Patty == Define.EPattyType.None)
+        {
+            // pattyCount > 0인데 Patty가 None이면 랜덤 패티로 설정
+            recipe.Patty = GetRandomPatty();
+        }
+        
         // 야채 총합 상한 보정
         if (recipe.Veggies.Count > Define.ORDER_MAX_VEGGIES_TOTAL)
             recipe.Veggies = recipe.Veggies.Take(Define.ORDER_MAX_VEGGIES_TOTAL).ToList();
@@ -62,28 +74,52 @@ public class UI_OrderSystem : GameManager
         }
         Debug.Log($"✓ 빵 일치: {crafted.Bread}");
         
-        // 패티 비교: 개수가 0이면 둘 다 None이어야 함
-        if (crafted.PattyCount == 0 && requested.PattyCount == 0)
+        // 패티 비교: 개수가 0이면 Patty도 None이어야 함, 개수가 0이 아니면 Patty도 None이 아니어야 함
+        // crafted 검증
+        if (crafted.PattyCount == 0 && crafted.Patty != Define.EPattyType.None)
         {
-            // 둘 다 패티가 없으면 통과
-            Debug.Log($"✓ 패티 없음 (둘 다 0개)");
+            Debug.LogWarning($"crafted 패티 개수 0인데 Patty가 None이 아님: {crafted.Patty}");
+            return false;
         }
-        else
+        if (crafted.PattyCount > 0 && crafted.Patty == Define.EPattyType.None)
         {
-            // 패티가 있으면 종류와 개수 모두 확인
+            Debug.LogWarning($"crafted 패티 개수 {crafted.PattyCount}인데 Patty가 None임");
+            return false;
+        }
+        
+        // requested 검증
+        if (requested.PattyCount == 0 && requested.Patty != Define.EPattyType.None)
+        {
+            Debug.LogWarning($"requested 패티 개수 0인데 Patty가 None이 아님: {requested.Patty}");
+            return false;
+        }
+        if (requested.PattyCount > 0 && requested.Patty == Define.EPattyType.None)
+        {
+            Debug.LogWarning($"requested 패티 개수 {requested.PattyCount}인데 Patty가 None임");
+            return false;
+        }
+        
+        // 개수 비교
+        if (crafted.PattyCount != requested.PattyCount)
+        {
+            Debug.LogWarning($"패티 개수 불일치: crafted={crafted.PattyCount}, requested={requested.PattyCount}");
+            return false;
+        }
+        Debug.Log($"✓ 패티 개수 일치: {crafted.PattyCount}");
+        
+        // 개수가 0이 아니면 종류도 비교
+        if (crafted.PattyCount > 0)
+        {
             if (crafted.Patty != requested.Patty)
             {
                 Debug.LogWarning($"패티 종류 불일치: crafted={crafted.Patty}, requested={requested.Patty}");
                 return false;
             }
             Debug.Log($"✓ 패티 종류 일치: {crafted.Patty}");
-            
-            if (crafted.PattyCount != requested.PattyCount)
-            {
-                Debug.LogWarning($"패티 개수 불일치: crafted={crafted.PattyCount}, requested={requested.PattyCount}");
-                return false;
-            }
-            Debug.Log($"✓ 패티 개수 일치: {crafted.PattyCount}");
+        }
+        else
+        {
+            Debug.Log($"✓ 패티 없음 (둘 다 0개, None)");
         }
         
         if (crafted.Sauce1Count != requested.Sauce1Count)
@@ -172,9 +208,9 @@ public class UI_OrderSystem : GameManager
         
         // 인사말 시작
         string[] greetings = {
-            "안녕하세요. 햄버거를 하나 주문하려고 하는데요",
-            "네, 햄버거 하나 주문하고 싶은데요",
-            "햄버거 하나 주문할게요"
+            "어이 주문",
+            "햄버거 주문하고 싶은데요",
+            "햄버거 주문할게요",
         };
         phrases.Add(greetings[Random.Range(0, greetings.Length)]);
         
@@ -213,16 +249,26 @@ public class UI_OrderSystem : GameManager
                 foreach (var group in veggieGroups)
                 {
                     string veggieName = group.Key == Define.EVeggieType.Lettuce ? "양상추" : "토마토";
-                    if (group.Count() == 1)
+                    int count = group.Count();
+                    // 항상 개수를 정확하게 표시
+                    if (count == 1)
                     {
-                        veggieList.Add(veggieName);
+                        veggieList.Add($"{veggieName} 1개");
                     }
                     else
                     {
-                        veggieList.Add($"{veggieName} {group.Count()}장");
+                        veggieList.Add($"{veggieName} {count}개");
                     }
                 }
-                phrases.Add($"약간의 프레시함을 위해 {string.Join("와 ", veggieList)} 추가해주세요");
+
+                string[] randomvaggie = new string[]
+                {
+                    "약간의 프레쉬함을 위해",
+                    "약간 양심 없어보이니까",
+                    "양심상"
+                };
+                string randomPrefix = randomvaggie[Random.Range(0, randomvaggie.Length)];
+                phrases.Add($"{randomPrefix} {string.Join("와 ", veggieList)} 추가해주세요");
             }
         }
         
@@ -232,17 +278,19 @@ public class UI_OrderSystem : GameManager
             var sauceList = new List<string>();
             if (recipe.Sauce1Count > 0)
             {
+                // 항상 개수를 정확하게 표시
                 if (recipe.Sauce1Count == 1)
-                    sauceList.Add("소스1");
+                    sauceList.Add("소스1 1개");
                 else
-                    sauceList.Add($"소스1 {recipe.Sauce1Count}번");
+                    sauceList.Add($"소스1 {recipe.Sauce1Count}개");
             }
             if (recipe.Sauce2Count > 0)
             {
+                // 항상 개수를 정확하게 표시
                 if (recipe.Sauce2Count == 1)
-                    sauceList.Add("소스2");
+                    sauceList.Add("소스2 1개");
                 else
-                    sauceList.Add($"소스2 {recipe.Sauce2Count}번");
+                    sauceList.Add($"소스2 {recipe.Sauce2Count}개");
             }
             phrases.Add($"감칠맛을 위해 {string.Join("와 ", sauceList)} 넣어주세요");
         }

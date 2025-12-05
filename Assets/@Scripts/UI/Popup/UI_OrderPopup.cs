@@ -43,6 +43,8 @@ public class UI_OrderPopup : MonoBehaviour
     {
         // Show()가 호출되지 않았을 경우를 대비해 매번 새로운 랜덤 주문 생성
         // Show()가 호출되면 그 레시피를 사용하고, 호출되지 않았으면 랜덤 생성
+        // 단, 실패 후 다시 열 때는 기존 레시피를 유지해야 하므로 Show()에서 설정된 레시피는 덮어쓰지 않음
+        // Show()는 OnEnable() 전에 호출되므로, 여기서는 Show()가 호출되지 않은 경우에만 랜덤 생성
         if (_requestedRecipe.Bread == Define.EBreadType.None)
         {
             _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
@@ -82,8 +84,8 @@ public class UI_OrderPopup : MonoBehaviour
     
     private void OnDisable()
     {
-        // 비활성화될 때 요청된 레시피 초기화 (다음 활성화 시 새로운 랜덤 주문 생성)
-        _requestedRecipe = new Define.BurgerRecipe { Bread = Define.EBreadType.None };
+        // 비활성화될 때 요청된 레시피는 유지 (실패 후 다시 열 때 같은 레시피 사용)
+        // 새로운 주문이 시작될 때만 초기화됨 (ShowWithRandomOrder 호출 시)
         
         // 코루틴 중지
         if (_textDisplayCoroutine != null)
@@ -179,6 +181,7 @@ public class UI_OrderPopup : MonoBehaviour
     // Show() 없이 활성화될 때 새로운 랜덤 주문 생성
     public void ShowWithRandomOrder()
     {
+        // 새로운 랜덤 주문 생성 (기존 레시피 초기화)
         _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
         
         // 현재 손님이 설정되지 않았으면 Counter에서 첫 번째 손님 찾기
@@ -233,15 +236,20 @@ public class UI_OrderPopup : MonoBehaviour
                 break;
                 
             case EOrderButtonType.Patty:
-                if (_currentRecipe.Patty == Define.EPattyType.None)
+                // 패티가 없거나 다른 종류의 패티를 클릭한 경우
+                if (_currentRecipe.Patty == Define.EPattyType.None || _currentRecipe.Patty != button.PattyType)
                 {
+                    // 기존 패티 리셋하고 새 패티로 시작
                     _currentRecipe.Patty = button.PattyType;
+                    _currentRecipe.PattyCount = 1;
                 }
-                
-                if (_currentRecipe.Patty == button.PattyType && 
-                    _currentRecipe.PattyCount < Define.ORDER_MAX_PATTY_COUNT)
+                else if (_currentRecipe.Patty == button.PattyType)
                 {
-                    _currentRecipe.PattyCount++;
+                    // 같은 종류의 패티를 클릭한 경우 개수 증가
+                    if (_currentRecipe.PattyCount < Define.ORDER_MAX_PATTY_COUNT)
+                    {
+                        _currentRecipe.PattyCount++;
+                    }
                 }
                 break;
                  
