@@ -77,11 +77,11 @@ public class UI_OrderComplete : MonoBehaviour
         if (rectTransform != null)
         {
             rectTransform.DOScale(Vector3.zero, 0.2f).SetEase(Ease.InBack)
-                .OnComplete(() => gameObject.SetActive(false));
+                .OnComplete(() => Destroy(gameObject));
         }
         else
         {
-            gameObject.SetActive(false);
+            Destroy(gameObject);
         }
     }
     

@@ -54,7 +54,7 @@ public class UI_OrderSystem : GameManager
         else if (recipe.Patty == Define.EPattyType.None)
         {
             // pattyCount > 0인데 Patty가 None이면 랜덤 패티로 설정
-            recipe.Patty = GetRandomPatty();
+            recipe.Patty = Define.EPattyType.Beef;
         }
         
         // 야채 총합 상한 보정
@@ -207,8 +207,7 @@ public class UI_OrderSystem : GameManager
         var phrases = new List<string>();
         
         // 인사말 시작
-        string[] greetings = {
-            "어이 주문",
+        string[] greetings = { 
             "햄버거 주문하고 싶은데요",
             "햄버거 주문할게요",
         };
