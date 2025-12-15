@@ -32,10 +32,10 @@ public class Grill : UnlockableBase
 
 	private void OnEnable()
 	{
-		if (_coSpawnBurger != null)
-			StopCoroutine(_coSpawnBurger);
-
-		_coSpawnBurger = StartCoroutine(CoSpawnBurgers());
+		// 자동 버거 생성 비활성화: 코루틴 실행하지 않음
+		// 이전 자동 스폰 로직:
+		// if (_coSpawnBurger != null) StopCoroutine(_coSpawnBurger);
+		// _coSpawnBurger = StartCoroutine(CoSpawnBurgers());
 	}
 
 	private void OnDisable()

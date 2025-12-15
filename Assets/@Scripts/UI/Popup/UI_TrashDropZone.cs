@@ -12,11 +12,35 @@ public class UI_TrashDropZone : MonoBehaviour, IDropHandler, IPointerEnterHandle
 
     public void OnDrop(PointerEventData eventData)
     {
-        UI_BurgerStack stack = eventData.pointerDrag ? eventData.pointerDrag.GetComponent<UI_BurgerStack>() : null;
+        UI_BurgerStack stack = null;
+        
+        // 1. pointerDrag에서 직접 찾기
+        if (eventData.pointerDrag != null)
+        {
+            stack = eventData.pointerDrag.GetComponent<UI_BurgerStack>();
+            
+            // 2. 재료 오브젝트인 경우 부모에서 찾기
+            if (stack == null)
+            {
+                var ingredientHandler = eventData.pointerDrag.GetComponent<UI_IngredientDragHandler>();
+                if (ingredientHandler != null)
+                {
+                    stack = eventData.pointerDrag.GetComponentInParent<UI_BurgerStack>();
+                }
+            }
+            
+            // 3. 부모에서 찾기
+            if (stack == null)
+            {
+                stack = eventData.pointerDrag.GetComponentInParent<UI_BurgerStack>();
+            }
+        }
+        
         if (stack != null)
         {
             _cookingPopup?.OnBurgerTrashed(stack);
         }
+        
         SetHighlight(false);
     }
 

@@ -25,7 +25,9 @@ public class GameManager : Singleton<GameManager>
         get { return SaveData.Money; }
         set
         {
+            long before = SaveData.Money;
             SaveData.Money = value;
+            Debug.Log($"[GameManager] Money changed: {before} -> {SaveData.Money}");
             BroadcastEvent(EEventType.MoneyChanged);
         }
     }
@@ -37,7 +39,7 @@ public class GameManager : Singleton<GameManager>
         StartCoroutine(CoInitialize());
     }
 
-    // ÇÑ ÇÁ·¹ÀÓ ±â´Ù·Á¼­ ¸ðµç ¿ÀºêÁ§Æ® ÃÊ±âÈ­ ³¡³ª°í ½ÇÇà.
+    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ù·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ® ï¿½Ê±ï¿½È­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
     public IEnumerator CoInitialize()
     {
         yield return new WaitForEndOfFrame();
@@ -95,7 +97,7 @@ public class GameManager : Singleton<GameManager>
     public void AddEventListener(EEventType type, Action action)
     {
         int index = (int)type;
-        if (_events.Length < index)
+        if (_events.Length <= index)
             return;
 
         _events[index] += action;
@@ -104,7 +106,7 @@ public class GameManager : Singleton<GameManager>
     public void RemoveEventListener(EEventType type, Action action)
     {
         int index = (int)type;
-        if (_events.Length < index)
+        if (_events.Length <= index)
             return;
 
         _events[index] -= action;
@@ -113,7 +115,8 @@ public class GameManager : Singleton<GameManager>
     public void BroadcastEvent(EEventType type)
     {
         int index = (int)type;
-        if (_events.Length < index)
+        // indexëŠ” 0 ê¸°ë°˜ì´ë¯€ë¡œ Length ì´í•˜ì¼ ë•Œë„ ë°©ì–´
+        if (_events.Length <= index)
             return;
 
         _events[index]?.Invoke();

@@ -83,4 +83,28 @@ public static class Utils
 		if (money < 1000000000000) return (money / 1000000000f).ToString("0.##") + "b"; // (b)
 		return (money / 1000000000000f).ToString("0.##") + "t"; // (t)
 	}
+
+	/// <summary>
+	/// 금액 증감(증가/감소)과 UI 애니메이션을 한 번에 처리.
+	/// delta: 증가/감소값(감소는 음수), clampZero: 0 미만 방지 여부, animate: UI 애니메이션 실행 여부
+	/// </summary>
+	public static void ApplyMoneyChange(long delta, float duration = 1f, bool clampZero = true, bool animate = true)
+	{
+		if (GameManager.Instance == null)
+			return;
+
+		long before = GameManager.Instance.Money;
+		long target = before + delta;
+		if (clampZero && target < 0)
+			target = 0;
+
+		// 실제 금액 반영 (이벤트도 여기서 발생)
+		GameManager.Instance.Money = target;
+
+		// UI 애니메이션
+		if (animate && GameManager.Instance.GameSceneUI != null)
+		{
+			GameManager.Instance.GameSceneUI.AnimateMoney(before, target, duration);
+		}
+	}
 }

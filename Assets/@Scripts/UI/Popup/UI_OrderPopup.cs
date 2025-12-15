@@ -529,6 +529,8 @@ public class UI_OrderPopup : MonoBehaviour
             {
                 counter.ProcessOrderComplete(_currentGuest, true);
             }
+
+            Utils.ApplyMoneyChange(-100);
             return;
         }
         
