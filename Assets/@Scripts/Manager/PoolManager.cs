@@ -8,8 +8,15 @@ internal class Pool
 {
 	private GameObject _prefab;
 	private IObjectPool<GameObject> _pool;
-
 	private Transform _root;
+
+	public Pool(GameObject prefab, Transform root = null)
+	{
+		_prefab = prefab;
+		_root = root;
+		_pool = new ObjectPool<GameObject>(OnCreate, OnGet, OnRelease, OnDestroy);
+	}
+
 	private Transform Root
 	{
 		get
@@ -24,16 +31,14 @@ internal class Pool
 		}
 	}
 
-	public Pool(GameObject prefab)
-	{
-		_prefab = prefab;
-		_pool = new ObjectPool<GameObject>(OnCreate, OnGet, OnRelease, OnDestroy);
-	}
-
 	public void Push(GameObject go)
 	{
+		// 활성화되어 있으면 비활성화 후 풀에 반환
 		if (go.activeSelf)
-			_pool.Release(go);
+		{
+			go.SetActive(false);
+		}
+		_pool.Release(go);
 	}
 
 	public GameObject Pop()
@@ -47,12 +52,52 @@ internal class Pool
 		GameObject go = GameObject.Instantiate(_prefab);
 		go.transform.SetParent(Root);
 		go.name = _prefab.name;
+		
+		// 팝업인 경우 Canvas의 sortOrder 설정
+		if (_root != null) // 팝업은 _root가 PopupPool
+		{
+			Canvas canvas = go.GetComponent<Canvas>();
+			if (canvas != null)
+			{
+				// 다른 팝업들의 최대 sortOrder를 찾아서 +1
+				int maxSortOrder = GetMaxPopupSortOrder();
+				canvas.sortingOrder = maxSortOrder + 1;
+			}
+		}
+		
 		return go;
+	}
+	
+	private int GetMaxPopupSortOrder()
+	{
+		if (_root == null)
+			return 0;
+		
+		int maxOrder = 0;
+		Canvas[] canvases = _root.GetComponentsInChildren<Canvas>(true);
+		foreach (Canvas canvas in canvases)
+		{
+			if (canvas.sortingOrder > maxOrder)
+				maxOrder = canvas.sortingOrder;
+		}
+		return maxOrder;
 	}
 
 	private void OnGet(GameObject go)
 	{
 		go.SetActive(true);
+		
+		// 팝업인 경우 Canvas의 sortOrder를 최상단으로 설정
+		if (_root != null) // 팝업은 _root가 PopupPool
+		{
+			Canvas canvas = go.GetComponent<Canvas>();
+			if (canvas != null)
+			{
+				// 다른 팝업들의 최대 sortOrder를 찾아서 +1
+				int maxSortOrder = GetMaxPopupSortOrder();
+				canvas.sortingOrder = maxSortOrder + 1;
+			}
+		}
 	}
 
 	private void OnRelease(GameObject go)
@@ -96,7 +141,25 @@ public class PoolManager : Singleton<PoolManager>
 
 	private void CreatePool(GameObject original)
 	{
-		Pool pool = new Pool(original);
+		// 팝업인지 확인 (이름에 "Popup"이 포함되어 있으면 팝업으로 간주)
+		bool isPopup = original.name.Contains("Popup");
+		
+		// 팝업이면 PopupPool에 직접 배치
+		Transform root = isPopup ? GetPopupPool() : null;
+		Pool pool = new Pool(original, root);
 		_pools.Add(original.name, pool);
+	}
+
+	/// <summary>
+	/// Popup을 관리하는 Pool
+	/// </summary>
+	public Transform GetPopupPool()
+	{
+		GameObject popupPool = GameObject.Find("@PopupPool");
+		if (popupPool == null)
+		{
+			popupPool = new GameObject("@PopupPool");
+		}
+		return popupPool.transform;
 	}
 }

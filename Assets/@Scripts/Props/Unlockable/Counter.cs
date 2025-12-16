@@ -3,6 +3,7 @@ using NUnit.Framework.Internal;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using static Define;
 
@@ -14,6 +15,8 @@ using static Define;
 // 6. 손님 계산 받기 Trigger (손님 있어야 함. 햄버거 있어야 함. 자리 있어야 함) (OK)
 public class Counter : UnlockableBase
 {
+	[SerializeField] GameObject orderPopup;
+
 	private BurgerPile _burgerPile;
 	private MoneyPile _moneyPile;
 
@@ -61,11 +64,12 @@ public class Counter : UnlockableBase
 		_moneyPile.GetComponent<WorkerInteraction>().InteractInterval = 0.02f;
 		_moneyPile.GetComponent<WorkerInteraction>().OnInteraction = OnMoneyInteraction;
 
-		// 손님 인터랙션.
-		GameObject machine = Utils.FindChild(gameObject, "Machine");
+		// 손님 인터랙션 (주문 받는 장소).
+		GameObject machine = Utils.FindChild(gameObject, "Machine"); 
 		_cashierInteraction = machine.GetComponent<WorkerInteraction>();
 		_cashierInteraction.InteractInterval = 1;
-		_cashierInteraction.OnInteraction = OnGuestInteraction;
+		_cashierInteraction.OnTriggerStart = OnBurgerTriggerStart;
+        _cashierInteraction.OnInteraction = OnGuestInteraction;
 	}
 
 	private void OnEnable()
@@ -191,6 +195,46 @@ public class Counter : UnlockableBase
 	#endregion
 
 	#region Interaction
+	private void OnBurgerTriggerStart(WorkerController wc)
+	{
+		// 플레이어만 팝업 오픈
+		if (wc == null || wc.GetComponent<PlayerController>() == null)
+			return;
+
+		if (orderPopup == null)
+			return;
+
+		// PoolManager에서 팝업 가져오기 (풀에서 재사용하거나 새로 생성)
+		GameObject instance = PoolManager.Instance.Pop(orderPopup);
+		UI_OrderPopup popup = instance.GetComponent<UI_OrderPopup>();
+		
+		if (popup != null)
+		{
+			// 주문 완료 이벤트 구독 (Grill의 UI_CookingPopup에 영수증 추가)
+			popup.OnOrderComplete += OnOrderComplete;
+			popup.ShowWithRandomOrder();
+		}
+	}
+	
+	// 주문 대기 큐 (Grill에 도착했을 때 추가)
+	private List<Define.BurgerRecipe> _pendingOrders = new List<Define.BurgerRecipe>();
+	
+	private void OnOrderComplete(Define.BurgerRecipe recipe)
+	{
+		// 주문을 대기 큐에 추가 (팝업은 열지 않음)
+		_pendingOrders.Add(recipe);
+	}
+	
+	/// <summary>
+	/// 대기 중인 주문들을 가져옵니다 (Grill에서 호출)
+	/// </summary>
+	public List<Define.BurgerRecipe> GetPendingOrders()
+	{
+		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_pendingOrders);
+		_pendingOrders.Clear();
+		return orders;
+	}
+
 	void OnBurgerInteraction(WorkerController wc)
 	{
 		_burgerPile.TrayToPile(wc.Tray);
@@ -201,7 +245,7 @@ public class Counter : UnlockableBase
 		_moneyPile.DespawnObjectWithJump(wc.transform.position, () =>
 		{
 			// TODO : ADD MONEY
-			GameManager.Instance.Money += 100;
+			Utils.ApplyMoneyChange(100);
 		});
 	}
 

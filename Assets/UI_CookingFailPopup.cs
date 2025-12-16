@@ -40,7 +40,11 @@ public class UI_CookingFailPopup : MonoBehaviour
 
     public void Hide()
     {
-        gameObject.SetActive(false);
+        // PoolManager에 반환 (내부에서 비활성화 처리)
+        if (PoolManager.Instance != null)
+        {
+            PoolManager.Instance.Push(gameObject);
+        }
     }
 
     public void AddFailCount()

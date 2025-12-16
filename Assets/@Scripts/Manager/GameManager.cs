@@ -7,6 +7,9 @@ using static Define;
 
 public class GameManager : Singleton<GameManager>
 {
+    public UI_UpgradeEmployeePopup UpgradeEmployeePopup;
+    public UI_GameScene GameSceneUI;
+
     public Vector2 JoystickDir { get; set; } = Vector2.zero;
 
     public PlayerController Player;
@@ -65,11 +68,6 @@ public class GameManager : Singleton<GameManager>
             SaveManager.Instance.SaveGame();
         }
     }
-
-    #region UIManager
-    public UI_UpgradeEmployeePopup UpgradeEmployeePopup;
-    public UI_GameScene GameSceneUI;
-    #endregion
 
     #region ObjectManager
     public GameObject WorkerPrefab;

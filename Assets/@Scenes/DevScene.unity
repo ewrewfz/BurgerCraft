@@ -2984,10 +2984,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91918ec7947834a4cae25168e634be63, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Player: {fileID: 981046030}
-  Restaurant: {fileID: 1912231467}
   UpgradeEmployeePopup: {fileID: 297968046}
   GameSceneUI: {fileID: 1727453446}
+  Player: {fileID: 981046030}
+  Restaurant: {fileID: 1912231467}
   WorkerPrefab: {fileID: 8964133629985101425, guid: 8aac8333444205646939d85bc183f944, type: 3}
   BurgerPrefab: {fileID: 3236845577413567611, guid: 24310ebd84b4dd54491deaa4a0b0a26e, type: 3}
   MoneyPrefab: {fileID: 312783850020754216, guid: c3be2d93b34d3c4499a98ff8e0e9ef10, type: 3}
@@ -4946,6 +4946,18 @@ PrefabInstance:
       propertyPath: Owner
       value: 
       objectReference: {fileID: 933855803}
+    - target: {fileID: 7516309277969094855, guid: 3f5ef39ca19f32d4e86a139142c64ae0, type: 3}
+      propertyPath: orderPopup
+      value: 
+      objectReference: {fileID: 3411525143285233754, guid: 485822555ed92aa4cb0254d528f42008, type: 3}
+    - target: {fileID: 7516309277969094855, guid: 3f5ef39ca19f32d4e86a139142c64ae0, type: 3}
+      propertyPath: _orderPopupPrefab
+      value: 
+      objectReference: {fileID: 3411525143285233754, guid: 485822555ed92aa4cb0254d528f42008, type: 3}
+    - target: {fileID: 7516309277969094855, guid: 3f5ef39ca19f32d4e86a139142c64ae0, type: 3}
+      propertyPath: _cookingPopupPrefab
+      value: 
+      objectReference: {fileID: 3899000268686438696, guid: a9047fac09d6f2f47af20ace3e76dff4, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -6701,6 +6713,10 @@ PrefabInstance:
       propertyPath: MaxObject
       value: 
       objectReference: {fileID: 775962013}
+    - target: {fileID: 9107210446573962122, guid: 4931b066f80a1284fa1887b28a283726, type: 3}
+      propertyPath: cookingPopup
+      value: 
+      objectReference: {fileID: 3899000268686438696, guid: a9047fac09d6f2f47af20ace3e76dff4, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

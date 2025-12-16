@@ -65,12 +65,21 @@ public class UI_FailPopup : MonoBehaviour
                 .OnComplete(() => 
                 {
                     gameObject.SetActive(false);
-                    // 팝업이 완전히 닫힌 후 정리 작업은 필요시 호출하는 쪽에서 처리
+                    // PoolManager에 반환
+                    if (PoolManager.Instance != null)
+                    {
+                        PoolManager.Instance.Push(gameObject);
+                    }
                 });
         }
         else
         {
             gameObject.SetActive(false);
+            // PoolManager에 반환
+            if (PoolManager.Instance != null)
+            {
+                PoolManager.Instance.Push(gameObject);
+            }
         }
     }
     
@@ -189,7 +198,7 @@ public class UI_FailPopup : MonoBehaviour
         return _currentFailCount;
     }
     
-    /// <summary>
+    /// <summary>   
     /// 실패 카운트를 리셋합니다.
     /// </summary>
     public void ResetFailCount()

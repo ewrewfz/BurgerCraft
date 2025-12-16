@@ -65,108 +65,62 @@ public class UI_OrderSystem : GameManager
 
     public static bool IsMatch(Define.BurgerRecipe crafted, Define.BurgerRecipe requested)
     {
-        Debug.Log("=== IsMatch 비교 시작 ===");
-        
+        // 빵 비교
         if (crafted.Bread != requested.Bread)
         {
-            Debug.LogWarning($"빵 불일치: crafted={crafted.Bread}, requested={requested.Bread}");
-            return false;
-        }
-        Debug.Log($"✓ 빵 일치: {crafted.Bread}");
-        
-        // 패티 비교: 개수가 0이면 Patty도 None이어야 함, 개수가 0이 아니면 Patty도 None이 아니어야 함
-        // crafted 검증
-        if (crafted.PattyCount == 0 && crafted.Patty != Define.EPattyType.None)
-        {
-            Debug.LogWarning($"crafted 패티 개수 0인데 Patty가 None이 아님: {crafted.Patty}");
-            return false;
-        }
-        if (crafted.PattyCount > 0 && crafted.Patty == Define.EPattyType.None)
-        {
-            Debug.LogWarning($"crafted 패티 개수 {crafted.PattyCount}인데 Patty가 None임");
+            Debug.LogWarning($"[매칭 실패] 빵 불일치: crafted={crafted.Bread}, requested={requested.Bread}");
             return false;
         }
         
-        // requested 검증
-        if (requested.PattyCount == 0 && requested.Patty != Define.EPattyType.None)
-        {
-            Debug.LogWarning($"requested 패티 개수 0인데 Patty가 None이 아님: {requested.Patty}");
-            return false;
-        }
-        if (requested.PattyCount > 0 && requested.Patty == Define.EPattyType.None)
-        {
-            Debug.LogWarning($"requested 패티 개수 {requested.PattyCount}인데 Patty가 None임");
-            return false;
-        }
-        
-        // 개수 비교
+        // 패티 비교
         if (crafted.PattyCount != requested.PattyCount)
         {
-            Debug.LogWarning($"패티 개수 불일치: crafted={crafted.PattyCount}, requested={requested.PattyCount}");
+            Debug.LogWarning($"[매칭 실패] 패티 개수 불일치: crafted={crafted.PattyCount}, requested={requested.PattyCount}");
             return false;
         }
-        Debug.Log($"✓ 패티 개수 일치: {crafted.PattyCount}");
-        
-        // 개수가 0이 아니면 종류도 비교
-        if (crafted.PattyCount > 0)
+        if (crafted.PattyCount > 0 && crafted.Patty != requested.Patty)
         {
-            if (crafted.Patty != requested.Patty)
-            {
-                Debug.LogWarning($"패티 종류 불일치: crafted={crafted.Patty}, requested={requested.Patty}");
-                return false;
-            }
-            Debug.Log($"✓ 패티 종류 일치: {crafted.Patty}");
-        }
-        else
-        {
-            Debug.Log($"✓ 패티 없음 (둘 다 0개, None)");
+            Debug.LogWarning($"[매칭 실패] 패티 종류 불일치: crafted={crafted.Patty}, requested={requested.Patty}");
+            return false;
         }
         
+        // 소스 비교
         if (crafted.Sauce1Count != requested.Sauce1Count)
         {
-            Debug.LogWarning($"소스1 개수 불일치: crafted={crafted.Sauce1Count}, requested={requested.Sauce1Count}");
+            Debug.LogWarning($"[매칭 실패] 소스1 개수 불일치: crafted={crafted.Sauce1Count}, requested={requested.Sauce1Count}");
             return false;
         }
-        Debug.Log($"✓ 소스1 개수 일치: {crafted.Sauce1Count}");
-        
         if (crafted.Sauce2Count != requested.Sauce2Count)
         {
-            Debug.LogWarning($"소스2 개수 불일치: crafted={crafted.Sauce2Count}, requested={requested.Sauce2Count}");
-            return false;
-        }
-        Debug.Log($"✓ 소스2 개수 일치: {crafted.Sauce2Count}");
-
-        if (crafted.Veggies == null || requested.Veggies == null)
-        {
-            Debug.LogWarning($"야채 null: crafted={crafted.Veggies == null}, requested={requested.Veggies == null}");
+            Debug.LogWarning($"[매칭 실패] 소스2 개수 불일치: crafted={crafted.Sauce2Count}, requested={requested.Sauce2Count}");
             return false;
         }
         
-        if (crafted.Veggies.Count != requested.Veggies.Count)
+        // 야채 비교: null 체크 및 None 값 제거 후 정렬하여 비교
+        var craftedVeggies = (crafted.Veggies ?? new List<Define.EVeggieType>())
+            .Where(v => v != Define.EVeggieType.None)
+            .OrderBy(v => v)
+            .ToList();
+        var requestedVeggies = (requested.Veggies ?? new List<Define.EVeggieType>())
+            .Where(v => v != Define.EVeggieType.None)
+            .OrderBy(v => v)
+            .ToList();
+        
+        if (craftedVeggies.Count != requestedVeggies.Count)
         {
-            Debug.LogWarning($"야채 개수 불일치: crafted={crafted.Veggies.Count} ({string.Join(", ", crafted.Veggies)}), requested={requested.Veggies.Count} ({string.Join(", ", requested.Veggies)})");
+            Debug.LogWarning($"[매칭 실패] 야채 개수 불일치: crafted={craftedVeggies.Count}개 ({string.Join(", ", craftedVeggies)}), requested={requestedVeggies.Count}개 ({string.Join(", ", requestedVeggies)})");
             return false;
         }
-        Debug.Log($"✓ 야채 개수 일치: {crafted.Veggies.Count}");
-
-        // 야채: 멀티셋 비교(중복 개수 포함)
-        var temp = new List<Define.EVeggieType>(crafted.Veggies);
-        foreach (var v in requested.Veggies)
+        
+        for (int i = 0; i < craftedVeggies.Count; i++)
         {
-            if (!temp.Remove(v))
+            if (craftedVeggies[i] != requestedVeggies[i])
             {
-                Debug.LogWarning($"야채 종류 불일치: requested에 {v}가 없음. 남은 crafted: {string.Join(", ", temp)}");
+                Debug.LogWarning($"[매칭 실패] 야채 종류 불일치: crafted[{i}]={craftedVeggies[i]}, requested[{i}]={requestedVeggies[i]}");
                 return false;
             }
         }
         
-        if (temp.Count != 0)
-        {
-            Debug.LogWarning($"야채 남음: {string.Join(", ", temp)}");
-            return false;
-        }
-        
-        Debug.Log("✓ 모든 항목 일치!");
         return true;
     }
 

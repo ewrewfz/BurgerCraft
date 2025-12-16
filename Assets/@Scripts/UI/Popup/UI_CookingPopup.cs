@@ -69,9 +69,6 @@ public class UI_CookingPopup : MonoBehaviour
     [Header("Fail Popup")]
     [SerializeField] private GameObject _failPopupPrefab;
     
-    [Header("Dev/Test")]
-    [SerializeField] private bool _autoCreateTestReceipt = true;
-
     // 선택/상태
     private readonly List<UI_CookingReceipt> _activeReceipts = new List<UI_CookingReceipt>();
     private UI_CookingReceipt _currentReceipt;
@@ -98,7 +95,6 @@ public class UI_CookingPopup : MonoBehaviour
     private void OnEnable()
     {
         ResetCurrentBurger();
-        EnsureReceiptExistsForTest();
         ResetFailPopupState();
     }
 
@@ -722,7 +718,8 @@ public class UI_CookingPopup : MonoBehaviour
             _resetFailOnOpen = false;
             if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
             {
-                Destroy(_currentFailPopup.gameObject);
+                _currentFailPopup.gameObject.SetActive(false);
+                PoolManager.Instance.Push(_currentFailPopup.gameObject);
             }
             _currentFailPopup = null;
         }
@@ -793,7 +790,8 @@ public class UI_CookingPopup : MonoBehaviour
         // 6. 성공 시 실패 팝업이 열려있다면 정리
         if (_currentFailPopup != null)
         {
-            Destroy(_currentFailPopup.gameObject);
+            _currentFailPopup.gameObject.SetActive(false);
+            PoolManager.Instance.Push(_currentFailPopup.gameObject);
             _currentFailPopup = null;
         }
 
@@ -842,25 +840,15 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
         
-        // 팝업 생성
-        GameObject popupObj = Instantiate(prefab);
-        
-        // Canvas 찾기
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas != null)
-        {
-            popupObj.transform.SetParent(canvas.transform, false);
-        }
-        else
-        {
-            popupObj.transform.SetParent(transform.root, false);
-        }
+        // 팝업 생성 (PoolManager에서 가져오기)
+        GameObject popupObj = PoolManager.Instance.Pop(prefab);
+        popupObj.transform.SetParent(PoolManager.Instance.GetPopupPool(), false);
         
         // UI_CookingFailPopup 컴포넌트 가져오기
         _currentFailPopup = popupObj.GetComponent<UI_CookingFailPopup>();
         if (_currentFailPopup == null)
         {
-            Destroy(popupObj);
+            PoolManager.Instance.Push(popupObj);
             return;
         }
         
@@ -892,29 +880,5 @@ public class UI_CookingPopup : MonoBehaviour
 
     #endregion
 
-    private void EnsureReceiptExistsForTest()
-    {
-        // 개발/테스트 모드에서 주문이 없는 상태로 버튼을 누를 때 대비
-        if (!_autoCreateTestReceipt)
-            return;
-
-        if (_currentReceipt == null)
-        {
-            if (_activeReceipts.Count > 0)
-            {
-                SelectReceipt(_activeReceipts[0]);
-                return;
-            }
-
-            if (_receiptParent != null && _receiptPrefab != null)
-            {
-                var dummy = Instantiate(_receiptPrefab, _receiptParent);
-                var recipe = UI_OrderSystem.GenerateRandomRecipe();
-                dummy.Init(recipe);
-                _activeReceipts.Add(dummy);
-                SelectReceipt(dummy);
-            }
-        }
-    }
 }
 
