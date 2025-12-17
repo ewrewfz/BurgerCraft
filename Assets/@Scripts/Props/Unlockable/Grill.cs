@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 // 1. 패티 에니메이션 (OK)
@@ -19,6 +20,14 @@ public class Grill : UnlockableBase
 	public Transform WorkerPos;
 	public GameObject MaxObject;
 	public bool StopSpawnBurger = true;
+	
+	// 점멸 효과 관련
+	private Renderer _grillRenderer;
+	private Material _originalMaterial;
+	private Material _blinkMaterial;
+	private Color _originalColor;
+	private Tweener _blinkTweener;
+	private bool _isBlinking = false;
 
 	protected void Awake()
 	{
@@ -29,23 +38,123 @@ public class Grill : UnlockableBase
 		_interaction.InteractInterval = 0.2f;
 		_interaction.OnInteraction = OnWorkerBurgerInteraction;
 		_interaction.OnTriggerStart = OnGrillTriggerStart;
+		
+		// 점멸 효과를 위한 Renderer 및 Material 초기화
+		InitializeBlinkEffect();
+	}
+	
+	private void OnEnable()
+	{
+		// Counter 이벤트 구독
+		Counter.OnPendingOrderAdded += StartBlinkEffect;
+		Counter.OnPendingOrdersCleared += StopBlinkEffect;
+		
+		// 현재 큐 상태 확인하여 점멸 시작
+		CheckPendingOrdersAndBlink();
+	}
+	
+	private void OnDisable()
+	{
+		// Counter 이벤트 구독 해제
+		Counter.OnPendingOrderAdded -= StartBlinkEffect;
+		Counter.OnPendingOrdersCleared -= StopBlinkEffect;
+		
+		// 점멸 효과 중지
+		StopBlinkEffect();
+	}
+	
+	/// <summary>
+	/// 점멸 효과를 위한 Renderer 및 Material 초기화
+	/// </summary>
+	private void InitializeBlinkEffect()
+	{
+		// Grill 오브젝트의 Renderer 찾기 (자식 중 "Grill" 이름을 가진 오브젝트)
+		Transform grillChild = transform.Find("Grill");
+		if (grillChild == null)
+		{
+			// 직접 자식이 아니면 재귀적으로 찾기
+			GameObject grillChildObj = Utils.FindChild(gameObject, "Grill", true);
+			if (grillChildObj != null)
+			{
+				grillChild = grillChildObj.transform;
+			}
+		}
+		
+		if (grillChild != null)
+		{
+			_grillRenderer = grillChild.GetComponent<Renderer>();
+			if (_grillRenderer != null && _grillRenderer.material != null)
+			{
+				// 원본 Material 복사
+				_originalMaterial = _grillRenderer.material;
+				_blinkMaterial = new Material(_originalMaterial);
+				_originalColor = _originalMaterial.color;
+				_grillRenderer.material = _blinkMaterial;
+			}
+		}
+	}
+	
+	/// <summary>
+	/// 현재 대기 중인 주문이 있는지 확인하고 점멸 효과 시작
+	/// </summary>
+	private void CheckPendingOrdersAndBlink()
+	{
+		Counter counter = FindObjectOfType<Counter>();
+		if (counter != null && counter.HasPendingOrders())
+		{
+			StartBlinkEffect();
+		}
+	}
+	
+	/// <summary>
+	/// 초록색 점멸 효과 시작
+	/// </summary>
+	private void StartBlinkEffect()
+	{
+		if (_isBlinking || _blinkMaterial == null)
+			return;
+		
+		_isBlinking = true;
+		
+		// 기존 트위너가 있으면 정리
+		if (_blinkTweener != null && _blinkTweener.IsActive())
+		{
+			_blinkTweener.Kill();
+		}
+		
+		// 초록색으로 점멸 (0.5초마다 깜빡임)
+		Color greenColor = Color.green;
+		_blinkTweener = _blinkMaterial.DOColor(greenColor, 0.5f)
+			.SetLoops(-1, LoopType.Yoyo)
+			.SetEase(Ease.InOutSine);
+	}
+	
+	/// <summary>
+	/// 점멸 효과 중지
+	/// </summary>
+	private void StopBlinkEffect()
+	{
+		if (!_isBlinking)
+			return;
+		
+		_isBlinking = false;
+		
+		// 트위너 중지
+		if (_blinkTweener != null && _blinkTweener.IsActive())
+		{
+			_blinkTweener.Kill();
+			_blinkTweener = null;
+		}
+		
+		// 원본 색상으로 복원
+		if (_blinkMaterial != null)
+		{
+			_blinkMaterial.DOColor(_originalColor, 0.3f)
+				.SetEase(Ease.OutQuad);
+		}
 	}
 
 	Coroutine _coSpawnBurger;
-
-	private void OnEnable()
-	{
-		
-		// if (_coSpawnBurger != null) StopCoroutine(_coSpawnBurger);
-		// _coSpawnBurger = StartCoroutine(CoSpawnBurgers());
-	}
-
-	private void OnDisable()
-	{
-		if (_coSpawnBurger != null)
-			StopCoroutine(_coSpawnBurger);
-		_coSpawnBurger = null;
-	}
 
 	//IEnumerator CoSpawnBurgers()
 	//{
@@ -131,6 +240,9 @@ public class Grill : UnlockableBase
 				{
 					popup.AddOrder(order);
 				}
+				
+				// 주문을 가져갔으므로 점멸 효과 해제 (GetPendingOrders 내부에서 이미 호출되지만 안전을 위해)
+				StopBlinkEffect();
 			}
 		}
 	}

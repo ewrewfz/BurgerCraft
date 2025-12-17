@@ -1,5 +1,6 @@
 using DG.Tweening;
 using NUnit.Framework.Internal;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -188,7 +189,7 @@ public class Counter : UnlockableBase
 			return;
 
 		// 주문 진행.
-		int orderCount = Random.Range(1, maxOrderCount + 1);
+		int orderCount = UnityEngine.Random.Range(1, maxOrderCount + 1);
 		_nextOrderBurgerCount = orderCount;
 		guest.OrderCount = orderCount;
 	}
@@ -219,10 +220,26 @@ public class Counter : UnlockableBase
 	// 주문 대기 큐 (Grill에 도착했을 때 추가)
 	private List<Define.BurgerRecipe> _pendingOrders = new List<Define.BurgerRecipe>();
 	
+	/// <summary>
+	/// 주문이 큐에 추가될 때 호출되는 이벤트 (Grill에서 점멸 효과를 위해 구독)
+	/// </summary>
+	public static Action OnPendingOrderAdded;
+	
 	private void OnOrderComplete(Define.BurgerRecipe recipe)
 	{
 		// 주문을 대기 큐에 추가 (팝업은 열지 않음)
 		_pendingOrders.Add(recipe);
+		
+		// 주문 추가 이벤트 호출 (Grill에서 점멸 효과 시작)
+		OnPendingOrderAdded?.Invoke();
+	}
+	
+	/// <summary>
+	/// 대기 중인 주문들이 있는지 확인합니다
+	/// </summary>
+	public bool HasPendingOrders()
+	{
+		return _pendingOrders.Count > 0;
 	}
 	
 	/// <summary>
@@ -232,8 +249,20 @@ public class Counter : UnlockableBase
 	{
 		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_pendingOrders);
 		_pendingOrders.Clear();
+		
+		// 주문을 가져갔으므로 점멸 해제 이벤트 호출
+		if (orders.Count > 0)
+		{
+			OnPendingOrdersCleared?.Invoke();
+		}
+		
 		return orders;
 	}
+	
+	/// <summary>
+	/// 주문 큐가 비워졌을 때 호출되는 이벤트 (Grill에서 점멸 효과 해제를 위해 구독)
+	/// </summary>
+	public static Action OnPendingOrdersCleared;
 
 	void OnBurgerInteraction(WorkerController wc)
 	{
