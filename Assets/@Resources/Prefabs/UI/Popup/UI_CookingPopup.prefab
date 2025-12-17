@@ -114,6 +114,126 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!1 &1975458064636304520
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1935967501311755021}
+  - component: {fileID: 2749127861783552745}
+  - component: {fileID: 9121239748367116493}
+  - component: {fileID: 1785576038999302569}
+  m_Layer: 5
+  m_Name: ExitButton
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1935967501311755021
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975458064636304520}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7741920044935875346}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -31, y: -36.1}
+  m_SizeDelta: {x: 90, y: 90}
+  m_Pivot: {x: 1, y: 1}
+--- !u!222 &2749127861783552745
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975458064636304520}
+  m_CullTransparentMesh: 1
+--- !u!114 &9121239748367116493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975458064636304520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: d4dcfda467d96ef4e8d695379fef4e6a, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!114 &1785576038999302569
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975458064636304520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 9121239748367116493}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &2049830903306042952
 GameObject:
   m_ObjectHideFlags: 0
@@ -556,7 +676,7 @@ GameObject:
   - component: {fileID: 1409052506531824250}
   - component: {fileID: 5492702886659748587}
   m_Layer: 5
-  m_Name: 2
+  m_Name: Sauce2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -692,10 +812,11 @@ RectTransform:
   m_GameObject: {fileID: 3899000268686438696}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5294179082652174048}
+  - {fileID: 1935967501311755021}
   - {fileID: 5930810526852377424}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -787,18 +908,9 @@ MonoBehaviour:
   _tomatoButton: {fileID: 3733697890918135637}
   _sauce1Button: {fileID: 4547377026277524001}
   _sauce2Button: {fileID: 5492702886659748587}
-  _grillRoot: {fileID: 5574259859788701550}
+  _exitButton: {fileID: 1785576038999302569}
   _flamePattyPos: {fileID: 8890252350776668804}
   _burgerCraftPos: {fileID: 7472335040359486593}
-  _burgerStackPrefab: {fileID: 0}
-  _breadBottomPrefab: {fileID: 0}
-  _breadTopPrefab: {fileID: 0}
-  _rawPattyPrefab: {fileID: 0}
-  _cookedPattyPrefab: {fileID: 0}
-  _lettucePrefab: {fileID: 0}
-  _tomatoPrefab: {fileID: 0}
-  _sauce1Prefab: {fileID: 0}
-  _sauce2Prefab: {fileID: 0}
   _breadBottomSprite: {fileID: 21300000, guid: dc0ad30aaea97f8478321ee5ae61edd5, type: 3}
   _breadTopSprite: {fileID: 21300000, guid: 1e2619e497272cb4b89e493b08ba5cfc, type: 3}
   _rawPattySprite: {fileID: 21300000, guid: 9b27afb3c4633bc4eae74efb2aeae9af, type: 3}
@@ -811,7 +923,6 @@ MonoBehaviour:
   _burgerStackAnimationDuration: 0.15
   _trashZone: {fileID: 5065535749321259373}
   _failPopupPrefab: {fileID: 4767804568502840247, guid: a463457db6385c74589b4ae80c419984, type: 3}
-  _autoCreateTestReceipt: 0
 --- !u!1 &4481072657793794331
 GameObject:
   m_ObjectHideFlags: 0
@@ -975,7 +1086,7 @@ GameObject:
   - component: {fileID: 134078925045927552}
   - component: {fileID: 4547377026277524001}
   m_Layer: 5
-  m_Name: 1
+  m_Name: Sauce1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1565,7 +1676,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -130}
   m_SizeDelta: {x: 1080, y: 500}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &739777982457876440

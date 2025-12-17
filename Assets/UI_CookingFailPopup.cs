@@ -40,6 +40,10 @@ public class UI_CookingFailPopup : MonoBehaviour
 
     public void Hide()
     {
+        // 이미 비활성화되어 있으면 풀에 이미 반환된 상태
+        if (!gameObject.activeSelf)
+            return;
+            
         // PoolManager에 반환 (내부에서 비활성화 처리)
         if (PoolManager.Instance != null)
         {
@@ -61,10 +65,10 @@ public class UI_CookingFailPopup : MonoBehaviour
             {    
                 Utils.ApplyMoneyChange(-100, 2f, clampZero: true, animate: true);
             }
-            // 즉시 비활성화
-            Hide();
-            gameObject.SetActive(false);
+            // 콜백 먼저 호출 (Hide 전에)
             OnMaxFailReached?.Invoke();
+            // 그 다음 풀에 반환
+            Hide();
             return;
         }
     }

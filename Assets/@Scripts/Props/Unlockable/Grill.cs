@@ -80,12 +80,46 @@ public class Grill : UnlockableBase
 		if (cookingPopup == null)
 			return;
 
-		// PoolManager에서 팝업 가져오기 (풀에서 재사용하거나 새로 생성)
-		GameObject instance = PoolManager.Instance.Pop(cookingPopup);
-		UI_CookingPopup popup = instance.GetComponent<UI_CookingPopup>();
+		// 이미 활성화된 팝업이 있으면 재사용
+		UI_CookingPopup existingPopup = FindObjectOfType<UI_CookingPopup>();
+		if (existingPopup != null && existingPopup.gameObject.activeInHierarchy)
+		{
+			// 이미 열려있으면 아무것도 하지 않음
+			return;
+		}
+
+		// 풀매니저의 PopupPool에서 비활성화된 팝업 찾기
+		UI_CookingPopup popup = null;
+		Transform popupPool = PoolManager.Instance.GetPopupPool();
+		
+		if (popupPool != null)
+		{
+			// PopupPool의 자식 중에서 비활성화된 UI_CookingPopup 찾기
+			for (int i = 0; i < popupPool.childCount; i++)
+			{
+				Transform child = popupPool.GetChild(i);
+				if (child.name == cookingPopup.name)
+				{
+					UI_CookingPopup foundPopup = child.GetComponent<UI_CookingPopup>();
+					if (foundPopup != null && !foundPopup.gameObject.activeSelf)
+					{
+						popup = foundPopup;
+						break;
+					}
+				}
+			}
+		}
+
+		// 풀에서 찾지 못했으면 PoolManager를 통해 가져오기 (새로 생성 또는 풀에서 가져오기)
+		if (popup == null)
+		{
+			GameObject instance = PoolManager.Instance.Pop(cookingPopup);
+			popup = instance.GetComponent<UI_CookingPopup>();
+		}
 		
 		if (popup != null)
 		{
+			// 팝업 활성화
 			popup.gameObject.SetActive(true);
 			
 			// Counter에서 대기 중인 주문들을 가져와서 추가

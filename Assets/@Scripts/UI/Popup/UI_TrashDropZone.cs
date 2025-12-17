@@ -38,7 +38,17 @@ public class UI_TrashDropZone : MonoBehaviour, IDropHandler, IPointerEnterHandle
         
         if (stack != null)
         {
-            _cookingPopup?.OnBurgerTrashed(stack);
+            // 런타임에 CookingPopup 찾기 (없으면 FindObjectOfType 사용)
+            UI_CookingPopup popup = _cookingPopup;
+            if (popup == null || !popup.gameObject.activeInHierarchy)
+            {
+                popup = FindObjectOfType<UI_CookingPopup>();
+            }
+            
+            if (popup != null)
+            {
+                popup.OnBurgerTrashed(stack);
+            }
         }
         
         SetHighlight(false);

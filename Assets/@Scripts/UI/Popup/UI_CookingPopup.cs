@@ -33,23 +33,13 @@ public class UI_CookingPopup : MonoBehaviour
     [SerializeField] private Button _sauce1Button;
     [SerializeField] private Button _sauce2Button;
 
+    [SerializeField] private Button _exitButton;
+
     [Header("Transforms")]
-    [SerializeField] private Transform _grillRoot;
     [SerializeField] private Transform _flamePattyPos;
     [SerializeField] private Transform _burgerCraftPos;
 
-    [Header("2D Prefabs (UI)")]
-    [SerializeField] private GameObject _burgerStackPrefab;
-    [SerializeField] private GameObject _breadBottomPrefab;
-    [SerializeField] private GameObject _breadTopPrefab;
-    [SerializeField] private GameObject _rawPattyPrefab;
-    [SerializeField] private GameObject _cookedPattyPrefab;
-    [SerializeField] private GameObject _lettucePrefab;
-    [SerializeField] private GameObject _tomatoPrefab;
-    [SerializeField] private GameObject _sauce1Prefab;
-    [SerializeField] private GameObject _sauce2Prefab;
-
-    [Header("Sprites (fallback)")]
+    [Header("Sprites")]
     [SerializeField] private Sprite _breadBottomSprite;
     [SerializeField] private Sprite _breadTopSprite;
     [SerializeField] private Sprite _rawPattySprite;
@@ -98,7 +88,12 @@ public class UI_CookingPopup : MonoBehaviour
         ResetFailPopupState();
     }
 
-    // 주문 추가(외부에서 호출)
+    private void OnDisable()
+    {
+        // 팝업이 비활성화될 때 정리 작업
+        // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
+    }
+
     public void AddOrder(Define.BurgerRecipe recipe)
     {
         if (_receiptPrefab == null || _receiptParent == null)
@@ -115,10 +110,24 @@ public class UI_CookingPopup : MonoBehaviour
 
         UI_CookingReceipt receipt = Instantiate(_receiptPrefab, _receiptParent);
         receipt.Init(recipe);
+        
+        // 영수증 클릭 이벤트 등록
+        receipt.OnReceiptClicked = OnReceiptClicked;
+        
         _activeReceipts.Add(receipt);
 
-        // 첫 주문 자동 선택
         if (_currentReceipt == null)
+        {
+            SelectReceipt(receipt);
+        }
+    }
+    
+    /// <summary>
+    /// 영수증 클릭 시 호출되는 콜백
+    /// </summary>
+    private void OnReceiptClicked(UI_CookingReceipt receipt)
+    {
+        if (receipt != null && _activeReceipts.Contains(receipt))
         {
             SelectReceipt(receipt);
         }
@@ -126,7 +135,27 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void SelectReceipt(UI_CookingReceipt receipt)
     {
+        // null 체크
+        if (receipt == null)
+            return;
+        
+        // 이미 선택된 receipt면 무시
+        if (_currentReceipt == receipt)
+            return;
+        
+        // 모든 receipt의 선택 상태 해제 (현재 선택된 것 포함)
+        foreach (var r in _activeReceipts)
+        {
+            if (r != null)
+            {
+                r.SetSelected(false);
+            }
+        }
+        
+        // 선택된 receipt 강조
         _currentReceipt = receipt;
+        _currentReceipt.SetSelected(true);
+        
         _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
         ResetCurrentBurger();
     }
@@ -139,6 +168,7 @@ public class UI_CookingPopup : MonoBehaviour
         AddListener(_tomatoButton, () => OnIngredientClicked(EIngredientType.Tomato));
         AddListener(_sauce1Button, () => OnIngredientClicked(EIngredientType.Sauce1));
         AddListener(_sauce2Button, () => OnIngredientClicked(EIngredientType.Sauce2));
+        AddListener(_exitButton, () => OnEnterExitButton());
     }
 
     private void AddListener(Button btn, Action action)
@@ -156,9 +186,11 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void OnIngredientClicked(EIngredientType ingredient)
     {
-        if (_currentReceipt == null)
+        // 빵이 아니고 하단 빵이 없으면 다른 재료 추가 불가
+        if (ingredient != EIngredientType.Bread && !_hasBottomBread)
         {
-            Debug.LogWarning("선택된 주문이 없습니다. 테스트 모드로 진행.");
+            Debug.LogWarning("빵을 먼저 추가해주세요.");
+            return;
         }
 
         switch (ingredient)
@@ -197,7 +229,6 @@ public class UI_CookingPopup : MonoBehaviour
         {
             _hasTopBread = true;
             AddIngredientToAssembly(EIngredientType.Bread, isTopBread: true);
-            // 상단 빵 추가 시 레시피 완료 체크
             CheckBurgerComplete();
         }
         else
@@ -206,51 +237,61 @@ public class UI_CookingPopup : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 번을 제외한 재료(패티, 야채, 소스)의 상한을 통합 관리하여 추가.
-    /// </summary>
+    private void OnEnterExitButton()
+    {
+        gameObject.SetActive(false);
+    }
+
     private bool TryAddIngredientWithLimit(EIngredientType ingredient)
     {
+        // 현재 선택된 receipt가 없으면 추가 불가
+        if (_currentReceipt == null)
+        {
+            Debug.LogWarning("선택된 주문이 없습니다.");
+            return false;
+        }
+
+        Define.BurgerRecipe requestedRecipe = _currentReceipt.Recipe;
+
         switch (ingredient)
         {
             case EIngredientType.Patty:
+                // 선택된 receipt의 패티 개수까지만 추가 가능
+                if (_currentRecipe.PattyCount >= requestedRecipe.PattyCount)
                 {
-                    int requestedPattyMax = Define.ORDER_MAX_PATTY_COUNT;
-                    if (_currentReceipt != null)
-                    {
-                        requestedPattyMax = Mathf.Min(Define.ORDER_MAX_PATTY_COUNT, _currentReceipt.Recipe.PattyCount);
-                    }
-
-                    if (_currentRecipe.PattyCount >= requestedPattyMax)
-                    {
-                        // 주문 수량을 초과하는 패티는 무시
-                        return false;
-                    }
-
-                    _currentRecipe.Patty = Define.EPattyType.Beef;
-                    _currentRecipe.PattyCount++;
-                    return true;
+                    Debug.LogWarning($"패티는 최대 {requestedRecipe.PattyCount}개까지만 추가 가능합니다.");
+                    return false;
                 }
+
+                _currentRecipe.Patty = requestedRecipe.Patty;
+                _currentRecipe.PattyCount++;
+                return true;
 
             case EIngredientType.Lettuce:
             case EIngredientType.Tomato:
                 if (_currentRecipe.Veggies == null)
                     _currentRecipe.Veggies = new List<Define.EVeggieType>();
 
-                if (_currentRecipe.Veggies.Count >= Define.ORDER_MAX_VEGGIES_TOTAL)
+                // 선택된 receipt의 야채 개수까지만 추가 가능
+                int requestedVeggieCount = requestedRecipe.Veggies != null ? requestedRecipe.Veggies.Count : 0;
+                if (_currentRecipe.Veggies.Count >= requestedVeggieCount)
                 {
-                    Debug.LogWarning("야채 총합은 최대 4개까지 가능합니다.");
+                    Debug.LogWarning($"야채는 최대 {requestedVeggieCount}개까지만 추가 가능합니다.");
                     return false;
                 }
 
-                Define.EVeggieType veggieType = ingredient == EIngredientType.Lettuce
-                    ? Define.EVeggieType.Lettuce
+                Define.EVeggieType veggieType = ingredient == EIngredientType.Lettuce 
+                    ? Define.EVeggieType.Lettuce 
                     : Define.EVeggieType.Tomato;
 
-                int sameCount = _currentRecipe.Veggies.Count(v => v == veggieType);
-                if (sameCount >= 2)
+                // 선택된 receipt에서 해당 야채의 개수 확인
+                int requestedVeggieTypeCount = requestedRecipe.Veggies != null 
+                    ? requestedRecipe.Veggies.Count(v => v == veggieType) 
+                    : 0;
+                
+                if (_currentRecipe.Veggies.Count(v => v == veggieType) >= requestedVeggieTypeCount)
                 {
-                    Debug.LogWarning($"{veggieType}는 최대 2개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"{veggieType}는 최대 {requestedVeggieTypeCount}개까지만 추가 가능합니다.");
                     return false;
                 }
 
@@ -258,25 +299,26 @@ public class UI_CookingPopup : MonoBehaviour
                 return true;
 
             case EIngredientType.Sauce1:
-                if (_currentRecipe.Sauce1Count >= Define.ORDER_MAX_SAUCE1_COUNT)
+                // 선택된 receipt의 소스1 개수까지만 추가 가능
+                if (_currentRecipe.Sauce1Count >= requestedRecipe.Sauce1Count)
                 {
-                    Debug.LogWarning("소스1은 최대 2회까지 가능합니다.");
+                    Debug.LogWarning($"소스1은 최대 {requestedRecipe.Sauce1Count}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce1Count++;
                 return true;
 
             case EIngredientType.Sauce2:
-                if (_currentRecipe.Sauce2Count >= Define.ORDER_MAX_SAUCE2_COUNT)
+                // 선택된 receipt의 소스2 개수까지만 추가 가능
+                if (_currentRecipe.Sauce2Count >= requestedRecipe.Sauce2Count)
                 {
-                    Debug.LogWarning("소스2는 최대 2회까지 가능합니다.");
+                    Debug.LogWarning($"소스2는 최대 {requestedRecipe.Sauce2Count}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce2Count++;
                 return true;
 
             default:
-                // Bread 등은 여기서 처리하지 않음
                 return false;
         }
     }
@@ -287,6 +329,13 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void HandlePattyClick()
     {
+        // 하단 빵이 없으면 패티 추가 불가
+        if (!_hasBottomBread)
+        {
+            Debug.LogWarning("빵을 먼저 추가해주세요.");
+            return;
+        }
+
         if (_isGrilling)
         {
             Debug.Log("패티가 아직 굽는 중입니다.");
@@ -305,12 +354,9 @@ public class UI_CookingPopup : MonoBehaviour
     private void StartGrilling()
     {
         ClearGrillArea();
-
-        GameObject prefab = _rawPattyPrefab;
-        _grillPattyObject = CreatePattyVisual(prefab, _rawPattySprite, _flamePattyPos);
+        _grillPattyObject = CreatePattyVisual(_rawPattySprite, _flamePattyPos);
         _isGrilling = true;
         _pattyCooked = false;
-
         _grillRoutine = StartCoroutine(CoGrill());
     }
 
@@ -323,7 +369,7 @@ public class UI_CookingPopup : MonoBehaviour
         if (_grillPattyObject != null)
             Destroy(_grillPattyObject);
 
-        _grillPattyObject = CreatePattyVisual(_cookedPattyPrefab, _cookedPattySprite, _flamePattyPos);
+        _grillPattyObject = CreatePattyVisual(_cookedPattySprite, _flamePattyPos);
     }
 
     private void MovePattyFromGrillToAssembly()
@@ -345,29 +391,22 @@ public class UI_CookingPopup : MonoBehaviour
         }
     }
 
-    private GameObject CreatePattyVisual(GameObject prefab, Sprite sprite, Transform parent)
+    private GameObject CreatePattyVisual(Sprite sprite, Transform parent)
     {
-        if (prefab != null)
-        {
-            GameObject obj = Instantiate(prefab, parent);
-            obj.transform.localPosition = Vector3.zero;
-            return obj;
-        }
+        if (sprite == null || parent == null)
+            return null;
 
-        if (sprite != null)
-        {
-            GameObject go = new GameObject("Patty", typeof(RectTransform), typeof(Image));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = Vector2.zero;
-            var img = go.GetComponent<Image>();
-            img.sprite = sprite;
-            img.SetNativeSize();
-            return go;
-        }
-
-        return null;
+        GameObject go = new GameObject("Patty", typeof(RectTransform), typeof(Image));
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.SetParent(parent, false);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        
+        Image img = go.GetComponent<Image>();
+        img.sprite = sprite;
+        img.SetNativeSize();
+        
+        return go;
     }
 
     #endregion
@@ -408,78 +447,26 @@ public class UI_CookingPopup : MonoBehaviour
 
     private GameObject CreateIngredientVisual(EIngredientType ingredient, bool isTopBread)
     {
-        GameObject prefab = GetPrefabForIngredient(ingredient, isTopBread);
         Sprite sprite = GetSpriteForIngredient(ingredient, isTopBread);
-
-        GameObject ingredientObj = null;
-        
-        if (prefab != null)
+        if (sprite == null)
         {
-            ingredientObj = Instantiate(prefab);
-        }
-        else if (sprite != null)
-        {
-            ingredientObj = new GameObject(ingredient.ToString(), typeof(RectTransform), typeof(Image));
-            var img = ingredientObj.GetComponent<Image>();
-            img.sprite = sprite;
-            img.SetNativeSize();
-        }
-        else
-        {
-            Debug.LogWarning($"{ingredient} 시각화 자원이 없습니다.");
+            Debug.LogWarning($"{ingredient} 스프라이트가 없습니다.");
             return null;
         }
 
-        // 재료 태그 저장
-        var tag = ingredientObj.AddComponent<UI_IngredientTag>();
+        GameObject ingredientObj = new GameObject(ingredient.ToString(), typeof(RectTransform), typeof(Image));
+        Image img = ingredientObj.GetComponent<Image>();
+        img.sprite = sprite;
+        img.SetNativeSize();
+
+        UI_IngredientTag tag = ingredientObj.AddComponent<UI_IngredientTag>();
         tag.Type = ingredient;
         tag.IsTopBread = isTopBread;
 
-        // 재료에 드래그 핸들러 추가하여 부모의 드래그를 전달
-        var ingredientDragHandler = ingredientObj.AddComponent<UI_IngredientDragHandler>();
-        ingredientDragHandler.SetParentStack(_currentBurgerStack);
+        UI_IngredientDragHandler dragHandler = ingredientObj.AddComponent<UI_IngredientDragHandler>();
+        dragHandler.SetParentStack(_currentBurgerStack);
         
         return ingredientObj;
-    }
-
-    private void SetRaycastTargetRecursive(GameObject obj, bool value)
-    {
-        if (obj == null)
-            return;
-
-        // Image 컴포넌트의 raycastTarget 설정
-        var image = obj.GetComponent<Image>();
-        if (image != null)
-        {
-            image.raycastTarget = value;
-        }
-
-        // 모든 자식 오브젝트에도 재귀적으로 적용
-        foreach (Transform child in obj.transform)
-        {
-            SetRaycastTargetRecursive(child.gameObject, value);
-        }
-    }
-
-    private GameObject GetPrefabForIngredient(EIngredientType ingredient, bool isTopBread)
-    {
-        switch (ingredient)
-        {
-            case EIngredientType.Bread:
-                return isTopBread ? _breadTopPrefab : _breadBottomPrefab;
-            case EIngredientType.Patty:
-                return _cookedPattyPrefab;
-            case EIngredientType.Lettuce:
-                return _lettucePrefab;
-            case EIngredientType.Tomato:
-                return _tomatoPrefab;
-            case EIngredientType.Sauce1:
-                return _sauce1Prefab;
-            case EIngredientType.Sauce2:
-                return _sauce2Prefab;
-            default:
-                return null;
-        }
     }
 
     private Sprite GetSpriteForIngredient(EIngredientType ingredient, bool isTopBread)
@@ -515,61 +502,36 @@ public class UI_CookingPopup : MonoBehaviour
         }
     }
 
-    private static bool _hasShownBurgerStackWarning = false;
-
     private void CreateBurgerStack()
     {
-        if (_burgerStackPrefab == null || _burgerCraftPos == null)
+        if (_burgerCraftPos == null)
         {
-            // 프리팹 미지정 시 런타임에 최소 컨테이너 생성 (테스트용)
-            if (_burgerCraftPos == null)
-            {
-                Debug.LogWarning("버거 스택 생성 실패: 조립 위치(_burgerCraftPos)가 없습니다.");
-                return;
-            }
-
-            // 경고 메시지는 한 번만 표시
-            if (!_hasShownBurgerStackWarning)
-            {
-                Debug.LogWarning("버거 스택 프리팹이 지정되지 않아 임시 컨테이너를 생성했습니다. 프리팹을 연결하면 이 경고는 사라집니다.");
-                _hasShownBurgerStackWarning = true;
-            }
-
-            GameObject fallback = new GameObject("BurgerStack", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(UI_BurgerStack));
-            var rt = fallback.GetComponent<RectTransform>();
-            rt.SetParent(_burgerCraftPos, false);
-            rt.anchorMin = new Vector2(0.5f, 0.5f);
-            rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(300, 400); // 충분히 크게 설정하여 재료들을 포함할 수 있도록
-            
-            // Image 컴포넌트 설정 (레이캐스트를 위해 필요)
-            var image = fallback.GetComponent<Image>();
-            image.color = new Color(1, 1, 1, 0); // 투명하지만 레이캐스트는 받음
-            image.raycastTarget = true;
-            
-            // CanvasGroup 설정 (자식들의 레이캐스트를 제어하지 않음)
-            var canvasGroup = fallback.GetComponent<CanvasGroup>();
-            canvasGroup.blocksRaycasts = true;
-            canvasGroup.interactable = true;
-            
-            _currentBurgerStack = fallback.GetComponent<UI_BurgerStack>();
-            _currentBurgerStack.OnTrashDropped += OnBurgerTrashed;
+            Debug.LogWarning("버거 스택 생성 실패: 조립 위치가 없습니다.");
             return;
         }
 
-        GameObject go = Instantiate(_burgerStackPrefab, _burgerCraftPos);
-        _currentBurgerStack = go.GetComponent<UI_BurgerStack>();
-        if (_currentBurgerStack != null)
-        {
-            _currentBurgerStack.OnTrashDropped += OnBurgerTrashed;
-        }
+        GameObject stackObj = new GameObject("BurgerStack", typeof(RectTransform), typeof(Image), typeof(CanvasGroup), typeof(UI_BurgerStack));
+        RectTransform rt = stackObj.GetComponent<RectTransform>();
+        rt.SetParent(_burgerCraftPos, false);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(300, 400);
+        
+        Image image = stackObj.GetComponent<Image>();
+        image.color = new Color(1, 1, 1, 0);
+        image.raycastTarget = true;
+        
+        CanvasGroup canvasGroup = stackObj.GetComponent<CanvasGroup>();
+        canvasGroup.blocksRaycasts = true;
+        canvasGroup.interactable = true;
+        
+        _currentBurgerStack = stackObj.GetComponent<UI_BurgerStack>();
+        _currentBurgerStack.OnTrashDropped += OnBurgerTrashed;
     }
 
     public void OnBurgerTrashed(UI_BurgerStack stack)
     {
         if (stack != null)
         {
-            // 버거 스택 오브젝트 삭제
             Destroy(stack.gameObject);
             _currentBurgerStack = null;
         }
@@ -630,35 +592,23 @@ public class UI_CookingPopup : MonoBehaviour
         if (_currentReceipt == null)
             return;
 
-        // 스택 기준으로 레시피를 재계산해 동기화
         RecalculateRecipeFromStack();
 
-        // 빵 상/하단이 모두 없으면 아직 제작 중이므로 판정하지 않음
-        if (!_hasBottomBread || !_hasTopBread)
+        if (!_hasBottomBread || !_hasTopBread || _assembledBurgerParts.Count == 0)
             return;
 
-        // 스택에 아무것도 없으면 판정하지 않음
-        if (_assembledBurgerParts.Count == 0)
-            return;
-
-        Define.BurgerRecipe requested = _currentReceipt.Recipe;
-        bool match = UI_OrderSystem.IsMatch(_currentRecipe, requested);
+        bool match = UI_OrderSystem.IsMatch(_currentRecipe, _currentReceipt.Recipe);
         
         if (match)
         {
-            // 레시피 일치 → 버거 생성 및 팝업 닫기
             SpawnBurgerAndComplete();
         }
         else
         {
-            // 레시피 불일치 → 실패 팝업 표시
             ShowFailPopup();
         }
     }
 
-    /// <summary>
-    /// 쌓인 재료 스택을 기준으로 현재 레시피를 다시 계산하여 동기화한다.
-    /// </summary>
     private void RecalculateRecipeFromStack()
     {
         var recipe = UI_OrderSystem.CreateEmptyRecipe();
@@ -718,118 +668,87 @@ public class UI_CookingPopup : MonoBehaviour
             _resetFailOnOpen = false;
             if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
             {
-                _currentFailPopup.gameObject.SetActive(false);
-                PoolManager.Instance.Push(_currentFailPopup.gameObject);
+                // Hide()를 통해 풀에 반환 (중복 방지)
+                if (_currentFailPopup.gameObject.activeSelf)
+                {
+                    _currentFailPopup.Hide();
+                }
             }
             _currentFailPopup = null;
         }
 
-        if (_currentFailPopup != null)
+        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
         {
-            if (_currentFailPopup.gameObject != null)
+            // 이미 비활성화되어 있으면 풀에 이미 반환된 상태
+            if (_currentFailPopup.gameObject.activeSelf)
             {
                 _currentFailPopup.ResetFailCount();
                 _currentFailPopup.Hide();
             }
-            else
-            {
-                _currentFailPopup = null;
-            }
+            _currentFailPopup = null;
         }
     }
 
     private void SpawnBurgerAndComplete()
     {
-        // 1. Grill 찾아서 자동 생성 비활성화
         Grill grill = FindObjectOfType<Grill>();
         if (grill != null)
         {
             grill.StopSpawnBurger = true;
-        }
-
-        // 2. BurgerPile에 버거 생성 (CoSpawnBurgers 로직 참고)
-        if (grill != null)
-        {
+            
             BurgerPile burgerPile = grill.GetComponentInChildren<BurgerPile>();
-            if (burgerPile != null)
+            if (burgerPile != null && burgerPile.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
             {
-                // 최대치 확인
-                if (burgerPile.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
-                {
-                    // 버거 생성 (SpawnObject는 GameManager.Instance.SpawnBurger()를 호출하고 AddToPile을 호출)
-                    burgerPile.SpawnObject();
-                }
+                burgerPile.SpawnObject();
             }
         }
 
-        // 3. 현재 영수증 제거
         if (_currentReceipt != null)
         {
             _activeReceipts.Remove(_currentReceipt);
-            if (_currentReceipt.gameObject != null)
-            {
-                Destroy(_currentReceipt.gameObject);
-            }
+            Destroy(_currentReceipt.gameObject);
             _currentReceipt = null;
         }
 
-        // 4. 다음 영수증 선택 또는 팝업 닫기
         if (_activeReceipts.Count > 0)
         {
             SelectReceipt(_activeReceipts[0]);
         }
         else
         {
-            // 모든 주문 완료 시 팝업 닫기
+            // PoolManager에 반환
             gameObject.SetActive(false);
+            PoolManager.Instance.Push(gameObject);
         }
 
-        // 5. 버거 초기화
         ResetCurrentBurger();
 
-        // 6. 성공 시 실패 팝업이 열려있다면 정리
-        if (_currentFailPopup != null)
+        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
         {
-            _currentFailPopup.gameObject.SetActive(false);
-            PoolManager.Instance.Push(_currentFailPopup.gameObject);
+            // Hide()를 통해 풀에 반환 (중복 방지)
+            if (_currentFailPopup.gameObject.activeSelf)
+            {
+                _currentFailPopup.Hide();
+            }
             _currentFailPopup = null;
         }
-
-        // 7. 팝업 비활성화 (다음에 다시 열었을 때 새 주문을 받을 수 있도록)
-        gameObject.SetActive(false);
     }
 
     private void ShowFailPopup()
     {
-        // 이미 떠 있는 실패 팝업이 있으면 재사용 (파괴 여부도 확인)
-        if (_currentFailPopup != null)
+        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
         {
-            if (_currentFailPopup.gameObject != null)
-            {
-                _currentFailPopup.AddFailCount();
-                _currentFailPopup.Show();
-                return;
-            }
-            else
-            {
-                _currentFailPopup = null;
-            }
+            _currentFailPopup.AddFailCount();
+            _currentFailPopup.Show();
+            return;
         }
 
-        GameObject prefab = null;
-        
-        // SerializeField로 할당된 프리펩이 있으면 사용
-        if (_failPopupPrefab != null)
+        GameObject prefab = _failPopupPrefab;
+        if (prefab == null)
         {
-            prefab = _failPopupPrefab;
-        }
-        else
-        {
-            // Resources에서 프리팹 로드 시도
             prefab = Resources.Load<GameObject>("Prefabs/UI/Popup/UI_CookingFailPopup");
             if (prefab == null)
             {
-                // @Resources 폴더 경로로 시도
                 prefab = Resources.Load<GameObject>("@Resources/Prefabs/UI/Popup/UI_CookingFailPopup");
             }
         }
@@ -840,11 +759,9 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
         
-        // 팝업 생성 (PoolManager에서 가져오기)
         GameObject popupObj = PoolManager.Instance.Pop(prefab);
         popupObj.transform.SetParent(PoolManager.Instance.GetPopupPool(), false);
         
-        // UI_CookingFailPopup 컴포넌트 가져오기
         _currentFailPopup = popupObj.GetComponent<UI_CookingFailPopup>();
         if (_currentFailPopup == null)
         {
@@ -852,29 +769,24 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
         
-        // 실패 카운트 증가
         _currentFailPopup.AddFailCount();
         
-        // 다음 버튼 클릭 시 CookingPopup 다시 열기
         _currentFailPopup.OnNextButtonClicked = () =>
         {
             if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
             {
                 _currentFailPopup.Hide();
             }
-            // CookingPopup은 이미 열려있으므로 그대로 유지
         };
 
-        // 최대 실패 시 팝업 닫고 CookingPopup 비활성화
         _currentFailPopup.OnMaxFailReached = () =>
         {
-            // FailPopup은 AddFailCount() 내에서 이미 Hide/비활성화 처리됨
-            // 여기서는 CookingPopup만 닫고, 다음 열 때 초기화 플래그만 설정
-            gameObject.SetActive(false);
             _resetFailOnOpen = true;
+            // PoolManager에 반환
+            gameObject.SetActive(false);
+            PoolManager.Instance.Push(gameObject);
         };
         
-        // 팝업 표시
         _currentFailPopup.Show();
     }
 

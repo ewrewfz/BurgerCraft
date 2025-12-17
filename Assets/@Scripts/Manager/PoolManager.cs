@@ -33,12 +33,27 @@ internal class Pool
 
 	public void Push(GameObject go)
 	{
+		// null 체크
+		if (go == null)
+			return;
+			
 		// 활성화되어 있으면 비활성화 후 풀에 반환
 		if (go.activeSelf)
 		{
 			go.SetActive(false);
 		}
-		_pool.Release(go);
+		
+		// 이미 풀에 반환된 오브젝트인지 확인 (비활성화되어 있고 부모가 풀 루트인 경우)
+		// ObjectPool의 내부 상태를 직접 확인할 수 없으므로, 
+		// Release 호출 시 예외가 발생하면 무시
+		try
+		{
+			_pool.Release(go);
+		}
+		catch (System.InvalidOperationException)
+		{
+			// 이미 풀에 반환된 경우 무시
+		}
 	}
 
 	public GameObject Pop()

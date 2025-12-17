@@ -124,36 +124,7 @@ public class UI_OrderSystem : GameManager
         return true;
     }
 
-    public static string GetOrderText(Define.BurgerRecipe recipe)
-    {
-        var parts = new List<string>();
-        parts.Add($"빵:{recipe.Bread} x2");
-        parts.Add($"패티:{(recipe.Patty == Define.EPattyType.None || recipe.PattyCount == 0 ? "없음" : $"{recipe.Patty} x{recipe.PattyCount}")}");
-
-        if (recipe.Veggies != null && recipe.Veggies.Count > 0)
-        {
-            var grouped = recipe.Veggies
-                .Where(v => v != Define.EVeggieType.None)
-                .GroupBy(v => v)
-                .Select(g => $"{g.Key} x{g.Count()}");
-            parts.Add($"야채:{string.Join(",", grouped)}");
-        }
-        else
-        {
-            parts.Add("야채:없음");
-        }
-
-        if (recipe.Sauce1Count > 0 || recipe.Sauce2Count > 0)
-        {
-            parts.Add($"소스1 x{recipe.Sauce1Count}");
-            parts.Add($"소스2 x{recipe.Sauce2Count}");
-        }
-        else
-        {
-            parts.Add("소스:없음");
-        }
-        return string.Join(" / ", parts);
-    }
+ 
 
     // 자연어 주문 텍스트 생성 (이미지 스타일) - 문장 리스트 반환
     public static List<string> GenerateNaturalOrderPhrases(Define.BurgerRecipe recipe)
@@ -260,13 +231,7 @@ public class UI_OrderSystem : GameManager
         
         return phrases;
     }
-    
-    // 자연어 주문 텍스트 생성 (이미지 스타일) - 기존 호환성 유지
-    public static string GenerateNaturalOrderText(Define.BurgerRecipe recipe)
-    {
-        var phrases = GenerateNaturalOrderPhrases(recipe);
-        return string.Join(", ", phrases);
-    }
+   
 
     // 가격 계산 및 영수증 생성 ------------------
     public static int CalculatePrice(Define.BurgerRecipe recipe)
@@ -323,15 +288,6 @@ public class UI_OrderSystem : GameManager
         crafted.totalPrice = 0;
         foreach (var l in crafted.lines) crafted.totalPrice += l.amount;
         return crafted;
-    }
-
-    public static Receipt BuildReceipt(Define.BurgerRecipe recipe)
-    {
-        var receipt = new Receipt();
-        receipt.id = System.Guid.NewGuid().ToString("N");
-        receipt.createdAt = System.DateTime.Now;
-        receipt.burger = BuildCraftedBurger(recipe);
-        return receipt;
     }
 
     private static Define.EBreadType GetRandomBread()

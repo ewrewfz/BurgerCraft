@@ -181,8 +181,8 @@ public class UI_OrderPopup : MonoBehaviour
     // Show() 없이 활성화될 때 새로운 랜덤 주문 생성
     public void ShowWithRandomOrder()
     {
-        // 새로운 랜덤 주문 생성 (기존 레시피 초기화)
-        _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
+        //// 새로운 랜덤 주문 생성 (기존 레시피 초기화)
+        //_requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
         
         // 현재 손님이 설정되지 않았으면 Counter에서 첫 번째 손님 찾기
         if (_currentGuest == null)
@@ -503,20 +503,11 @@ public class UI_OrderPopup : MonoBehaviour
         // 3회 실패 시 팝업을 표시하지 않고 바로 손님이 스폰 위치로 돌아가도록 처리
         if (currentFailCount >= 3)
         {
-            // 기존 실패 팝업이 있으면 파괴
-            if (_currentFailPopup != null)
+            // 기존 실패 팝업이 있으면 풀에 반환
+            if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
             {
-                try
-                {
-                    if (_currentFailPopup.gameObject != null)
-                    {
-                        Destroy(_currentFailPopup.gameObject);
-                    }
-                }
-                catch
-                {
-                    // 이미 파괴된 경우 무시
-                }
+                _currentFailPopup.gameObject.SetActive(false);
+                PoolManager.Instance.Push(_currentFailPopup.gameObject);
                 _currentFailPopup = null;
             }
             
@@ -535,108 +526,22 @@ public class UI_OrderPopup : MonoBehaviour
         }
         
         // 3회 미만이면 팝업 표시
-        // 기존 실패 팝업이 있으면 (비활성화되어 있어도) 재사용
-        if (_currentFailPopup != null)
+        // 기존 실패 팝업이 있으면 재사용
+        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
         {
-            // GameObject가 파괴되었는지 확인
-            try
-            {
-                // gameObject에 접근하여 유효성 확인
-                GameObject popupGameObject = _currentFailPopup.gameObject;
-                if (popupGameObject == null)
-                {
-                    _currentFailPopup = null;
-                }
-                else
-                {
-                    // 현재 손님과 다시 연결 (손님이 바뀔 수 있으므로)
-                    if (_currentFailPopup != null)
-                    {
-                        _currentFailPopup.SetAssociatedGuest(_currentGuest);
-                        
-                        // 3회 실패 시 손님이 떠나도록 콜백 설정 (AddFailCount 호출 전에 설정)
-                        _currentFailPopup.OnAllFailsReached = () =>
-                        {
-                            if (_currentGuest != null)
-                            {
-                                // 팝업 파괴
-                                if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
-                                {
-                                    Destroy(_currentFailPopup.gameObject);
-                                }
-                                _currentFailPopup = null;
-                                
-                                // 손님이 떠나도록 처리
-                                _currentGuest.LeaveDueToFailures();
-                            }
-                        };
-                        
-                        // 실패 카운트는 이미 증가했으므로 UI만 업데이트
-                        // SetAssociatedGuest에서 이미 FailCount를 가져오므로 AddFailCount는 호출하지 않음
-                        // 대신 현재 실패 카운트에 맞게 이미지만 업데이트
-                        _currentFailPopup.SetAssociatedGuest(_currentGuest);
-                        
-                        // 실패 이미지 업데이트를 위해 수동으로 호출
-                        // (SetAssociatedGuest에서 이미 UpdateFailImages를 호출하지만, 
-                        //  AddFailCount를 호출하지 않았으므로 수동으로 업데이트 필요)
-                        // 실제로는 SetAssociatedGuest에서 이미 업데이트되므로 추가 작업 불필요
-                        
-                        // 팝업 표시 (null 체크 후)
-                        if (_currentFailPopup != null)
-                        {
-                            try
-                            {
-                                // gameObject가 유효한지 다시 확인
-                                if (_currentFailPopup.gameObject != null)
-                                {
-                                    _currentFailPopup.Show();
-                                }
-                                else
-                                {
-                                    _currentFailPopup = null;
-                                }
-                            }
-                            catch (System.NullReferenceException)
-                            {
-                                // Show() 내부에서 null 참조 발생 시
-                                _currentFailPopup = null;
-                            }
-                            catch (UnityEngine.MissingReferenceException)
-                            {
-                                // GameObject가 파괴된 경우
-                                _currentFailPopup = null;
-                            }
-                        }
-                    }
-                    return;
-                }
-            }
-            catch (UnityEngine.MissingReferenceException)
-            {
-                // GameObject가 파괴된 경우
-                _currentFailPopup = null;
-            }
-            catch (System.NullReferenceException)
-            {
-                // Null 참조 예외 처리
-                _currentFailPopup = null;
-            }
+            _currentFailPopup.SetAssociatedGuest(_currentGuest);
+            _currentFailPopup.Show();
+            SetupFailPopupCallbacks();
+            return;
         }
         
-        GameObject prefab = null;
-        
-        // SerializeField로 할당된 프리펩이 있으면 사용
-        if (_orderFailPrefab != null)
+        // 프리펩 가져오기
+        GameObject prefab = _orderFailPrefab;
+        if (prefab == null)
         {
-            prefab = _orderFailPrefab;
-        }
-        else
-        {
-            // Resources에서 프리펩 로드 시도
             prefab = Resources.Load<GameObject>("Prefabs/UI/Popup/UI_FailPopup");
             if (prefab == null)
             {
-                // @Resources 폴더 경로로 시도
                 prefab = Resources.Load<GameObject>("@Resources/Prefabs/UI/Popup/UI_FailPopup");
             }
         }
@@ -646,63 +551,52 @@ public class UI_OrderPopup : MonoBehaviour
             return;
         }
         
-        // 팝업 생성
-        GameObject popupObj = Instantiate(prefab);
+        // 팝업 생성 (PoolManager에서 가져오기)
+        GameObject popupObj = PoolManager.Instance.Pop(prefab);
+        popupObj.transform.SetParent(PoolManager.Instance.GetPopupPool(), false);
         
-        // Canvas 찾기
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas != null)
-        {
-            popupObj.transform.SetParent(canvas.transform, false);
-        }
-        else
-        {
-            popupObj.transform.SetParent(transform.root, false);
-        }
-        
-        // UI_FailPopup 컴포넌트 가져와서 처리
+        // UI_FailPopup 컴포넌트 가져오기
         _currentFailPopup = popupObj.GetComponent<UI_FailPopup>();
         if (_currentFailPopup == null)
         {
-            Destroy(popupObj);
+            PoolManager.Instance.Push(popupObj);
             return;
         }
         
-        // 현재 손님과 연결
-        if (_currentGuest != null)
-        {
-            _currentFailPopup.SetAssociatedGuest(_currentGuest);
-        }
+        // 현재 손님과 연결 및 콜백 설정
+        _currentFailPopup.SetAssociatedGuest(_currentGuest);
+        SetupFailPopupCallbacks();
+        
+        // 팝업 표시
+        _currentFailPopup.Show();
+    }
+    
+    private void SetupFailPopupCallbacks()
+    {
+        if (_currentFailPopup == null)
+            return;
+        
+        // 필요한 정보 저장
+        Define.BurgerRecipe requestedRecipe = _requestedRecipe;
+        GuestController currentGuest = _currentGuest;
+        UI_OrderPopup orderPopupInstance = this;
         
         // 3회 실패 시 손님이 떠나도록 콜백 설정
         _currentFailPopup.OnAllFailsReached = () =>
         {
-            if (_currentGuest != null)
+            if (currentGuest != null)
             {
-                // 팝업 파괴
                 if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
                 {
-                    Destroy(_currentFailPopup.gameObject);
+                    _currentFailPopup.gameObject.SetActive(false);
+                    PoolManager.Instance.Push(_currentFailPopup.gameObject);
                 }
                 _currentFailPopup = null;
-                
-                // 손님이 떠나도록 처리
-                _currentGuest.LeaveDueToFailures();
+                currentGuest.LeaveDueToFailures();
             }
         };
         
-        // 실패 카운트는 이미 증가했으므로 UI만 업데이트
-        // SetAssociatedGuest에서 이미 FailCount를 가져오므로 AddFailCount는 호출하지 않음
-        // 대신 현재 실패 카운트에 맞게 이미지만 업데이트
-        _currentFailPopup.SetAssociatedGuest(_currentGuest);
-        
         // 다음 단계 버튼 클릭 시 주문 팝업을 다시 열도록 콜백 설정
-        // (UI_FailPopup에서 이미 3회 미만인지 체크하므로 여기서는 바로 열기)
-        // 필요한 정보를 저장하여 전달
-        Define.BurgerRecipe requestedRecipe = _requestedRecipe;
-        GuestController currentGuest = _currentGuest;
-        UI_OrderPopup orderPopupInstance = this; // 현재 인스턴스 참조 저장
-        
         _currentFailPopup.OnNextButtonClicked = () =>
         {
             if (orderPopupInstance == null)
@@ -743,9 +637,6 @@ public class UI_OrderPopup : MonoBehaviour
                 orderPopupInstance.ShowWithRandomOrder();
             }
         };
-        
-        // 팝업 표시
-        _currentFailPopup.Show();
     }
     
     /// <summary>

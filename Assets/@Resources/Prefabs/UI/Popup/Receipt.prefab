@@ -640,3 +640,4 @@ MonoBehaviour:
   _priceText: {fileID: 2298116005870806180}
   _tipText: {fileID: 575530142716054309}
   _totalText: {fileID: 5329378604078244455}
+  _receiptImage: {fileID: 2911390984042132235}
