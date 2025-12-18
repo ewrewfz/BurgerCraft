@@ -28,6 +28,12 @@ public class Grill : UnlockableBase
 	// 인스펙터 표시용 (디버그)
 	[SerializeField] private List<string> _orderQueueDisplay = new List<string>();
 	
+	// 팝업에 전달된 주문 큐 (표시용)
+	private List<Define.BurgerRecipe> _deliveredOrderQueue = new List<Define.BurgerRecipe>();
+	
+	// 인스펙터 표시용 (전달된 주문)
+	[SerializeField] private List<string> _deliveredOrderQueueDisplay = new List<string>();
+	
 	// 점멸 효과 관련
 	private Renderer _grillRenderer;
 	private Material _originalMaterial;
@@ -42,7 +48,7 @@ public class Grill : UnlockableBase
 
 		// 햄버거 인터랙션.
 		_interaction = _burgers.GetComponent<WorkerInteraction>();
-		_interaction.InteractInterval = 0.2f;
+		_interaction.                                  InteractInterval = 0.2f;
 		_interaction.OnInteraction = OnWorkerBurgerInteraction;
 		_interaction.OnTriggerStart = OnGrillTriggerStart;
 
@@ -113,19 +119,87 @@ public class Grill : UnlockableBase
 	
 	/// <summary>
 	/// 주문 큐의 모든 주문을 가져옵니다 (CookingPopup에 전달)
+	/// 주의: 이 메서드는 주문을 큐에서 제거하지 않습니다. 실제로 처리된 주문만 RemoveOrder로 제거해야 합니다.
 	/// </summary>
 	public List<Define.BurgerRecipe> GetOrders()
 	{
+		// 주문을 복사해서 반환 (원본 큐는 유지)
 		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_orderQueue);
-		_orderQueue.Clear();
-#if UNITY_EDITOR
-        // 인스펙터 표시용 업데이트
-        UpdateOrderQueueDisplay();
-#endif
-        // 주문을 가져갔으므로 점멸 효과 해제
-        CheckPendingOrdersAndBlink();
+		
+		// 전달된 주문 큐 업데이트 (표시용)
+		// 이미 전달된 주문은 유지하고, 새로운 주문만 추가
+		foreach (var order in orders)
+		{
+			// 이미 전달된 주문 큐에 있는지 확인 (IsMatch로 비교)
+			bool alreadyDelivered = false;
+			foreach (var delivered in _deliveredOrderQueue)
+			{
+				if (UI_OrderSystem.IsMatch(delivered, order))
+				{
+					alreadyDelivered = true;
+					break;
+				}
+			}
+			
+			// 전달되지 않은 주문만 추가
+			if (!alreadyDelivered)
+			{
+				_deliveredOrderQueue.Add(order);
+			}
+		}
+		
+		UpdateDeliveredOrderQueueDisplay();
 		
 		return orders;
+	}
+	
+	/// <summary>
+	/// 처리된 주문을 큐에서 제거합니다 (CookingPopup에서 완료된 주문에 대해 호출)
+	/// </summary>
+	public void RemoveOrder(Define.BurgerRecipe recipe)
+	{
+		// struct이므로 직접 비교해서 제거
+		_orderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, recipe));
+		_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, recipe));
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
+		UpdateDeliveredOrderQueueDisplay();
+#endif
+		// 주문이 모두 처리되었으면 점멸 효과 해제
+		CheckPendingOrdersAndBlink();
+	}
+	
+	/// <summary>
+	/// 처리되지 않은 주문들을 다시 큐에 추가합니다 (팝업이 닫힐 때 호출)
+	/// </summary>
+	public void ReturnOrders(List<Define.BurgerRecipe> orders)
+	{
+		if (orders == null || orders.Count == 0)
+			return;
+		
+		// 이미 큐에 있는 주문은 추가하지 않음 (중복 방지)
+		foreach (var order in orders)
+		{
+			if (!_orderQueue.Contains(order))
+			{
+				_orderQueue.Add(order);
+			}
+		}
+		
+		// 전달된 주문 큐에서 반환된 주문 제거 (struct이므로 직접 비교)
+		foreach (var order in orders)
+		{
+			_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
+		}
+		
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
+		UpdateDeliveredOrderQueueDisplay();
+#endif
+		// 주문이 다시 추가되었으므로 점멸 효과 시작
+		CheckPendingOrdersAndBlink();
 	}
 	
 	/// <summary>
@@ -137,33 +211,54 @@ public class Grill : UnlockableBase
 		
 		foreach (var order in _orderQueue)
 		{
-			// 주문을 간단한 문자열로 변환
-			string orderText = $"빵:{order.Bread}, 패티:{order.Patty}({order.PattyCount}), ";
-			
-			if (order.Veggies != null && order.Veggies.Count > 0)
-			{
-				var veggieGroups = order.Veggies
-					.Where(v => v != Define.EVeggieType.None)
-					.GroupBy(v => v)
-					.ToList();
-				
-				var veggieList = new List<string>();
-				foreach (var group in veggieGroups)
-				{
-					string veggieName = group.Key == Define.EVeggieType.Lettuce ? "양상추" : "토마토";
-					veggieList.Add($"{veggieName}({group.Count()})");
-				}
-				orderText += $"야채:[{string.Join(", ", veggieList)}], ";
-			}
-			else
-			{
-				orderText += "야채:없음, ";
-			}
-			
-			orderText += $"소스1:{order.Sauce1Count}, 소스2:{order.Sauce2Count}";
-			
-			_orderQueueDisplay.Add(orderText);
+			_orderQueueDisplay.Add(FormatOrderToString(order));
 		}
+	}
+	
+	/// <summary>
+	/// 인스펙터 표시용 전달된 주문 큐를 업데이트합니다.
+	/// </summary>
+	private void UpdateDeliveredOrderQueueDisplay()
+	{
+		_deliveredOrderQueueDisplay.Clear();
+		
+		foreach (var order in _deliveredOrderQueue)
+		{
+			_deliveredOrderQueueDisplay.Add(FormatOrderToString(order));
+		}
+	}
+	
+	/// <summary>
+	/// 주문을 문자열로 변환합니다.
+	/// </summary>
+	private string FormatOrderToString(Define.BurgerRecipe order)
+	{
+		// 주문을 간단한 문자열로 변환
+		string orderText = $"빵:{order.Bread}, 패티:{order.Patty}({order.PattyCount}), ";
+		
+		if (order.Veggies != null && order.Veggies.Count > 0)
+		{
+			var veggieGroups = order.Veggies
+				.Where(v => v != Define.EVeggieType.None)
+				.GroupBy(v => v)
+				.ToList();
+			
+			var veggieList = new List<string>();
+			foreach (var group in veggieGroups)
+			{
+				string veggieName = group.Key == Define.EVeggieType.Lettuce ? "양상추" : "토마토";
+				veggieList.Add($"{veggieName}({group.Count()})");
+			}
+			orderText += $"야채:[{string.Join(", ", veggieList)}], ";
+		}
+		else
+		{
+			orderText += "야채:없음, ";
+		}
+		
+		orderText += $"소스1:{order.Sauce1Count}, 소스2:{order.Sauce2Count}";
+		
+		return orderText;
 	}
 	
 	/// <summary>
@@ -274,6 +369,7 @@ public class Grill : UnlockableBase
 				popup.gameObject.SetActive(true);
 				
 				// 주문 큐에서 모든 주문을 가져와서 팝업에 전달 (팝업 내부에서 최대 3개만 표시)
+				// 주의: GetOrders()는 주문을 큐에서 제거하지 않음 (복사본 반환)
 				List<Define.BurgerRecipe> orders = GetOrders();
 				popup.AddOrders(orders);
 			}

@@ -93,6 +93,20 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void OnDisable()
     {
+        // 팝업이 비활성화될 때 처리되지 않은 주문을 Grill에 다시 반환
+        if (_orderQueue.Count > 0)
+        {
+            // 큐에 남아있는 주문들을 리스트로 변환
+            List<Define.BurgerRecipe> remainingOrders = new List<Define.BurgerRecipe>(_orderQueue);
+            
+            // Grill에 주문 반환
+            Grill grill = FindObjectOfType<Grill>();
+            if (grill != null)
+            {
+                grill.ReturnOrders(remainingOrders);
+            }
+        }
+        
         // 팝업이 비활성화될 때 정리 작업
         // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
     }
@@ -105,12 +119,27 @@ public class UI_CookingPopup : MonoBehaviour
         if (orders == null || orders.Count == 0)
             return;
         
-        // 모든 주문을 큐에 추가
+        // 이미 표시된 영수증의 레시피는 제외하고 큐에 추가 (중복 방지)
         foreach (var order in orders)
         {
             if (order.Bread != Define.EBreadType.None)
             {
-                _orderQueue.Enqueue(order);
+                // 이미 표시된 영수증에 있는 주문인지 확인
+                bool alreadyDisplayed = false;
+                foreach (var receipt in _activeReceipts)
+                {
+                    if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                    {
+                        alreadyDisplayed = true;
+                        break;
+                    }
+                }
+                
+                // 이미 표시되지 않은 주문만 큐에 추가
+                if (!alreadyDisplayed)
+                {
+                    _orderQueue.Enqueue(order);
+                }
             }
         }
         
@@ -753,14 +782,41 @@ public class UI_CookingPopup : MonoBehaviour
             {
                 burgerPile.SpawnObject();
             }
+            
+            // 완료된 주문을 Grill의 큐에서 제거
+            if (_currentReceipt != null)
+            {
+                grill.RemoveOrder(_currentReceipt.Recipe);
+            }
         }
 
         // 완료된 영수증 제거
+        Define.BurgerRecipe completedRecipe = UI_OrderSystem.CreateEmptyRecipe();
         if (_currentReceipt != null)
         {
+            completedRecipe = _currentReceipt.Recipe;
             _activeReceipts.Remove(_currentReceipt);
             Destroy(_currentReceipt.gameObject);
             _currentReceipt = null;
+        }
+
+        // 완료된 주문을 팝업의 큐에서도 제거 (중복 방지)
+        if (completedRecipe.Bread != Define.EBreadType.None)
+        {
+            var tempQueue = new Queue<Define.BurgerRecipe>();
+            while (_orderQueue.Count > 0)
+            {
+                var order = _orderQueue.Dequeue();
+                if (!UI_OrderSystem.IsMatch(order, completedRecipe))
+                {
+                    tempQueue.Enqueue(order);
+                }
+            }
+            _orderQueue.Clear();
+            while (tempQueue.Count > 0)
+            {
+                _orderQueue.Enqueue(tempQueue.Dequeue());
+            }
         }
 
         // 다음 주문을 큐에서 가져와서 영수증 리프레시

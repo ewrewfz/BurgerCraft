@@ -181,8 +181,6 @@ public class UI_OrderPopup : MonoBehaviour
     // Show() 없이 활성화될 때 새로운 랜덤 주문 생성
     public void ShowWithRandomOrder()
     {
-        // 새로운 랜덤 주문 생성 (기존 레시피 초기화)
-        _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
         
         // 현재 레시피도 초기화 (새 주문을 받기 위해)
         _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();

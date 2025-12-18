@@ -87,13 +87,8 @@ public class Counter : UnlockableBase
 			if (pickupWaypoints != null)
 			{
 				_pickupQueuePoints = pickupWaypoints.GetPoints();
-				Debug.Log($"[Counter] BurgerPickupPos 웨이포인트 초기화 완료. 웨이포인트 개수: {_pickupQueuePoints.Count}");
 			}
-			else
-			{
-				// Waypoints 컴포넌트가 없으면 에러 로그
-				Debug.LogError($"[Counter] BurgerPickupPos에 Waypoints 컴포넌트가 없습니다! BurgerPickupPos={BurgerPickupPos.name}");
-			}
+		
 		}
 
 		// 햄버거 인터랙션.
@@ -444,7 +439,47 @@ public class Counter : UnlockableBase
 			}
 		}
 	}
-		
+	
+	/// <summary>
+	/// 대기 중인 주문들이 있는지 확인합니다 (더 이상 사용하지 않음 - Grill에서 직접 관리)
+	/// </summary>
+	// public bool HasPendingOrders()
+	// {
+	// 	return _pendingOrders.Count > 0;
+	// }
+	
+	/// <summary>
+	/// 대기 중인 주문들을 가져옵니다 (더 이상 사용하지 않음 - Grill에서 직접 관리)
+	/// </summary>
+	// public List<Define.BurgerRecipe> GetPendingOrders()
+	// {
+	// 	List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_pendingOrders);
+	// 	_pendingOrders.Clear();
+	// 	
+	// 	// 주문을 가져갔으므로 점멸 해제 이벤트 호출
+	// 	if (orders.Count > 0)
+	// 	{
+	// 		OnPendingOrdersCleared?.Invoke();
+	// 	}
+	// 	
+	// 	return orders;
+	// }
+	
+	/// <summary>
+	/// 주문 큐가 비워졌을 때 호출되는 이벤트 (더 이상 사용하지 않음)
+	/// </summary>
+	// public static Action OnPendingOrdersCleared;
+	
+	/// <summary>
+	/// 버거를 Counter의 BurgerPile에 추가합니다. (버거는 BurgerPile에서만 관리)
+	/// </summary>
+	public void AddBurgerToPile()
+	{
+		if (_burgerPile != null)
+		{
+			_burgerPile.SpawnObject();
+		}
+	}
 
 	void OnBurgerInteraction(WorkerController wc)
 	{
