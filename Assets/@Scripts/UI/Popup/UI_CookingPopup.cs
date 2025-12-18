@@ -65,6 +65,9 @@ public class UI_CookingPopup : MonoBehaviour
     private Define.BurgerRecipe _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
     private UI_CookingFailPopup _currentFailPopup;
     private bool _resetFailOnOpen = false;
+    
+    // 주문 큐 (Grill에서 받은 모든 주문을 저장)
+    private readonly Queue<Define.BurgerRecipe> _orderQueue = new Queue<Define.BurgerRecipe>();
 
     private UI_BurgerStack _currentBurgerStack;
     private readonly List<GameObject> _assembledBurgerParts = new List<GameObject>();
@@ -94,7 +97,44 @@ public class UI_CookingPopup : MonoBehaviour
         // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
     }
 
-    public void AddOrder(Define.BurgerRecipe recipe)
+    /// <summary>
+    /// Grill에서 주문 목록을 받아 큐에 저장하고, 최대 3개까지 영수증 표시
+    /// </summary>
+    public void AddOrders(List<Define.BurgerRecipe> orders)
+    {
+        if (orders == null || orders.Count == 0)
+            return;
+        
+        // 모든 주문을 큐에 추가
+        foreach (var order in orders)
+        {
+            if (order.Bread != Define.EBreadType.None)
+            {
+                _orderQueue.Enqueue(order);
+            }
+        }
+        
+        // 영수증 리프레시 (최대 3개까지 표시)
+        RefreshReceipts();
+    }
+    
+    /// <summary>
+    /// 주문 큐에서 최대 3개까지 영수증을 표시합니다.
+    /// </summary>
+    private void RefreshReceipts()
+    {
+        // 현재 표시된 영수증이 3개 미만이면 큐에서 가져와서 추가
+        while (_activeReceipts.Count < 3 && _orderQueue.Count > 0)
+        {
+            Define.BurgerRecipe recipe = _orderQueue.Dequeue();
+            AddReceipt(recipe);
+        }
+    }
+    
+    /// <summary>
+    /// 단일 영수증을 추가합니다.
+    /// </summary>
+    private void AddReceipt(Define.BurgerRecipe recipe)
     {
         if (_receiptPrefab == null || _receiptParent == null)
         {
@@ -104,7 +144,6 @@ public class UI_CookingPopup : MonoBehaviour
 
         if (_activeReceipts.Count >= 3)
         {
-            Debug.LogWarning("최대 3개 주문까지만 표시합니다.");
             return;
         }
 
@@ -120,6 +159,18 @@ public class UI_CookingPopup : MonoBehaviour
         {
             SelectReceipt(receipt);
         }
+    }
+    
+    /// <summary>
+    /// 단일 주문 추가 (하위 호환성)
+    /// </summary>
+    public void AddOrder(Define.BurgerRecipe recipe)
+    {
+        if (recipe.Bread == Define.EBreadType.None)
+            return;
+        
+        _orderQueue.Enqueue(recipe);
+        RefreshReceipts();
     }
     
     /// <summary>
@@ -691,6 +742,7 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void SpawnBurgerAndComplete()
     {
+        // 원래대로 Grill의 BurgerPile에 버거 생성
         Grill grill = FindObjectOfType<Grill>();
         if (grill != null)
         {
@@ -703,6 +755,7 @@ public class UI_CookingPopup : MonoBehaviour
             }
         }
 
+        // 완료된 영수증 제거
         if (_currentReceipt != null)
         {
             _activeReceipts.Remove(_currentReceipt);
@@ -710,15 +763,13 @@ public class UI_CookingPopup : MonoBehaviour
             _currentReceipt = null;
         }
 
+        // 다음 주문을 큐에서 가져와서 영수증 리프레시
+        RefreshReceipts();
+
+        // 다음 영수증 선택 (있는 경우)
         if (_activeReceipts.Count > 0)
         {
             SelectReceipt(_activeReceipts[0]);
-        }
-        else
-        {
-            // PoolManager에 반환
-            gameObject.SetActive(false);
-            PoolManager.Instance.Push(gameObject);
         }
 
         ResetCurrentBurger();

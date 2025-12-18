@@ -54,7 +54,7 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
             // 초기 설정
             _outline.enabled = false;
             _outline.effectColor = Color.yellow;
-            _outline.effectDistance = new Vector2(3, -3);
+            _outline.effectDistance = new Vector2(5, -5);
         }
     }
     

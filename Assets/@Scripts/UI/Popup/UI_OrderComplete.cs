@@ -21,6 +21,8 @@ public class UI_OrderComplete : MonoBehaviour
     
     private const int TIP_AMOUNT = 2; // 팁 2원 고정
     
+    public System.Action OnCompletePopupClosed;
+    
     private void Awake()
     {
         if (_closeButton != null)
@@ -77,10 +79,15 @@ public class UI_OrderComplete : MonoBehaviour
         if (rectTransform != null)
         {
             rectTransform.DOScale(Vector3.zero, 0.2f).SetEase(Ease.InBack)
-                .OnComplete(() => Destroy(gameObject));
+                .OnComplete(() => 
+                {
+                    OnCompletePopupClosed?.Invoke();
+                    Destroy(gameObject);
+                });
         }
         else
         {
+            OnCompletePopupClosed?.Invoke();
             Destroy(gameObject);
         }
     }

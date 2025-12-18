@@ -181,8 +181,11 @@ public class UI_OrderPopup : MonoBehaviour
     // Show() 없이 활성화될 때 새로운 랜덤 주문 생성
     public void ShowWithRandomOrder()
     {
-        //// 새로운 랜덤 주문 생성 (기존 레시피 초기화)
-        //_requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
+        // 새로운 랜덤 주문 생성 (기존 레시피 초기화)
+        _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
+        
+        // 현재 레시피도 초기화 (새 주문을 받기 위해)
+        _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
         
         // 현재 손님이 설정되지 않았으면 Counter에서 첫 번째 손님 찾기
         if (_currentGuest == null)
@@ -400,17 +403,7 @@ public class UI_OrderPopup : MonoBehaviour
             // 주문 완료 팝업 표시
             ShowOrderCompletePopup(_currentRecipe);
             
-            // 주문 완료 처리 - 테이블로 보내기
-            if (_currentGuest != null)
-            {
-                Counter counter = FindObjectOfType<Counter>();
-                if (counter != null)
-                {
-                    counter.ProcessOrderComplete(_currentGuest, false);
-                }
-            }
-            
-            // 주문 완료 이벤트 호출
+            // 주문 완료 이벤트 호출 (Counter에서 처리)
             if (OnOrderComplete != null)
             {
                 OnOrderComplete(_currentRecipe);
@@ -484,6 +477,17 @@ public class UI_OrderPopup : MonoBehaviour
             Destroy(popupObj);
             return;
         }
+        
+        // 성공 팝업이 닫힐 때 다음 주문을 받을 수 있도록 콜백 설정
+        orderComplete.OnCompletePopupClosed = () =>
+        {
+            // Counter에서 남은 주문이 있는지 확인하고 다음 주문 받기
+            Counter counter = FindObjectOfType<Counter>();
+            if (counter != null && _currentGuest != null)
+            {
+                counter.CheckAndOpenNextOrder(_currentGuest);
+            }
+        };
         
         orderComplete.Show(recipe);
     }
