@@ -37,7 +37,7 @@ public class RestaurantData
 public class UnlockableStateData
 {
 	public EUnlockedState State = EUnlockedState.Hidden;
-	public long SpentMoney = 10000;
+	public long SpentMoney = 0;
 }
 #endregion
 

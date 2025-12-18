@@ -28,8 +28,8 @@ public class UI_ConstructionArea : MonoBehaviour
         GetComponent<WorkerInteraction>().OnInteraction = OnWorkerInteraction;
         GetComponent<WorkerInteraction>().InteractInterval = Define.CONSTRUCTION_UPGRADE_INTERVAL;
 
-        // TODO : µ¥ÀÌÅÍ Âü°íÇØ¼­ ¾÷±×·¹ÀÌµå ºñ¿ë ¼³Á¤.
-        TotalUpgradeMoney = 1;
+        // TODO : ë°ì´í„° ì°¸ê³ í•´ì„œ ì—…ê·¸ë ˆì´ë“œ ë¹„ìš© ì„¤ì •.
+        TotalUpgradeMoney = 300;
     }
 
     public void OnWorkerInteraction(WorkerController wc)
@@ -51,7 +51,7 @@ public class UI_ConstructionArea : MonoBehaviour
         {
             SpentMoney = TotalUpgradeMoney;
 
-            // ÇØ±İ ¿Ï·á.
+            // í•´ê¸ˆ ì™„ë£Œ.
             Owner.SetUnlockedState(EUnlockedState.Unlocked);
 
             GameManager.Instance.BroadcastEvent(EEventType.UnlockProp);

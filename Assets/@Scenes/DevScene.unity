@@ -846,7 +846,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 4653869020255136727}
+    m_TransformParent: {fileID: 1866637825}
     m_Modifications:
     - target: {fileID: 4295608627748288951, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_PresetInfoIsWorld
@@ -898,7 +898,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -22.39
+      value: 2.3100014
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_LocalRotation.w
@@ -910,15 +910,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 23.48
+      value: 1.5999985
       objectReference: {fileID: 0}
     - target: {fileID: 4999974893235086497, guid: ee9bb24a81c2be2458c46eb7e22f43ca, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -4566,7 +4566,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9117849976623954700, guid: 59fda9d10e0a51b4c9c3be8b75f19ce3, type: 3}
       propertyPath: TotalUpgradeMoney
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4794,7 +4794,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9117849976623954700, guid: 59fda9d10e0a51b4c9c3be8b75f19ce3, type: 3}
       propertyPath: TotalUpgradeMoney
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5106,6 +5106,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c42eb6cf5e8cbd46be349eeaa7bba2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!4 &1866637825 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1227649975147101545, guid: 4931b066f80a1284fa1887b28a283726, type: 3}
+  m_PrefabInstance: {fileID: 5580405618320873274}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &1898501757 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a019f931ef629b54f8a6760764659403, type: 3}
@@ -7065,7 +7070,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 4592193636468873922, guid: 4931b066f80a1284fa1887b28a283726, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 1227649975147101545, guid: 4931b066f80a1284fa1887b28a283726, type: 3}
       insertIndex: -1
       addedObject: {fileID: 202822169}
     m_AddedComponents: []
