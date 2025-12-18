@@ -16,6 +16,9 @@ public class Table : UnlockableBase
 	public List<Transform> Chairs = new List<Transform>();
 
 	public List<GuestController> Guests = new List<GuestController>();
+	
+	// 손님별 주문한 버거 개수 (쓰레기 생성 시 사용)
+	private Dictionary<GuestController, int> _guestOrderCounts = new Dictionary<GuestController, int>();
 
 	private TrashPile _trashPile;
 	private MoneyPile _moneyPile; 
@@ -101,7 +104,11 @@ public class Table : UnlockableBase
 				guest.GuestState = EGuestState.Eating;
 				guest.transform.rotation = Chairs[i].rotation;
 
-				_burgerPile.TrayToPile(guest.Tray);
+				// 손님이 도착한 시점에 모든 버거를 테이블로 옮기기 (코루틴으로 처리)
+				if (guest.Tray != null && guest.Tray.TotalItemCount > 0)
+				{
+					StartCoroutine(CoMoveAllBurgersToTable(guest));
+				}
 			}
 
 			_eatingTimeRemaining = Random.Range(5, 11);
@@ -115,14 +122,27 @@ public class Table : UnlockableBase
 
 			_eatingTimeRemaining = 0;
 
-			// 버거 제거.
-			for (int i = 0; i < Guests.Count; i++)
-				_burgerPile.DespawnObject();
+			// 버거 제거 및 쓰레기 생성 (각 손님이 먹은 버거 개수만큼)
+			int totalTrashCount = 0;
+			foreach (GuestController guest in Guests)
+			{
+				// 손님이 주문한 버거 개수 확인
+				int orderCount = _guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 1;
+				
+				// 버거 제거 (주문 개수만큼)
+				for (int i = 0; i < orderCount; i++)
+				{
+					_burgerPile.DespawnObject();
+				}
+				
+				// 쓰레기 개수 누적
+				totalTrashCount += orderCount;
+			}
 
 			// 쓰레기 생성.
-			SpawnTrashRemaining = Guests.Count;
+			SpawnTrashRemaining = totalTrashCount;
 
-			// 돈 생성
+			// 돈 생성 (손님 수만큼)
 			SpawnMoneyRemaining = Guests.Count;
 
 			// 손님 퇴장.
@@ -137,6 +157,7 @@ public class Table : UnlockableBase
 
 			// 정리.
 			Guests.Clear();
+			_guestOrderCounts.Clear();
 			TableState = ETableState.Dirty;
 		}
 		else if (TableState == ETableState.Dirty)
@@ -176,6 +197,66 @@ public class Table : UnlockableBase
 		}
 	}
 
+	/// <summary>
+	/// 손님의 주문 개수를 저장합니다 (쓰레기 생성 시 사용)
+	/// </summary>
+	public void SetGuestOrderCount(GuestController guest, int orderCount)
+	{
+		if (guest != null)
+		{
+			_guestOrderCounts[guest] = orderCount;
+		}
+	}
+	
+	/// <summary>
+	/// 트레이의 모든 버거를 테이블로 옮기는 코루틴 (애니메이션 완료 대기 포함)
+	/// </summary>
+	private IEnumerator CoMoveAllBurgersToTable(GuestController guest)
+	{
+		// 모든 버거를 옮기기 (애니메이션 중인 것 포함)
+		int maxIterations = 20; // 안전장치: 최대 반복 횟수
+		int iterations = 0;
+		
+		while (guest.Tray.TotalItemCount > 0 && iterations < maxIterations)
+		{
+			// TrayToPile 호출 전 TotalItemCount 저장
+			int beforeTotalCount = guest.Tray.TotalItemCount;
+			int beforeItemCount = guest.Tray.ItemCount;
+			
+			_burgerPile.TrayToPile(guest.Tray);
+			
+			// ItemCount가 감소했으면 성공적으로 옮긴 것
+			if (guest.Tray.ItemCount < beforeItemCount)
+			{
+				// 다음 버거를 옮기기 전에 약간 대기 (애니메이션 시간)
+				yield return new WaitForSeconds(0.1f);
+			}
+			// TotalItemCount가 변하지 않았고 ItemCount도 변하지 않았으면 애니메이션 완료 대기
+			else if (guest.Tray.TotalItemCount == beforeTotalCount && guest.Tray.ItemCount == beforeItemCount)
+			{
+				// ReservedCount가 있으면 애니메이션 완료 대기
+				if (guest.Tray.ReservedCount > 0)
+				{
+					// 애니메이션 완료까지 대기 (DOJump은 0.3초)
+					yield return new WaitForSeconds(0.4f);
+				}
+				else
+				{
+					// 더 이상 옮길 수 없으면 종료
+					break;
+				}
+			}
+			
+			iterations++;
+		}
+		
+		// 모든 버거를 옮긴 후 트레이 비활성화
+		if (guest.Tray != null)
+		{
+			guest.Tray.Visible = false;
+		}
+	}
+	
 	#region Interaction
 	void OnTrashInteraction(WorkerController wc)
 	{

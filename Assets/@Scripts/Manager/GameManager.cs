@@ -30,7 +30,6 @@ public class GameManager : Singleton<GameManager>
         {
             long before = SaveData.Money;
             SaveData.Money = value;
-            Debug.Log($"[GameManager] Money changed: {before} -> {SaveData.Money}");
             BroadcastEvent(EEventType.MoneyChanged);
         }
     }
@@ -42,7 +41,6 @@ public class GameManager : Singleton<GameManager>
         StartCoroutine(CoInitialize());
     }
 
-    // �� ������ ��ٷ��� ��� ������Ʈ �ʱ�ȭ ������ ����.
     public IEnumerator CoInitialize()
     {
         yield return new WaitForEndOfFrame();

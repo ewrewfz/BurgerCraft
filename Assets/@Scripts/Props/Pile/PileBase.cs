@@ -195,6 +195,9 @@ public class PileBase : MonoBehaviour
         // 스택에 추가한다.
         _objects.Push(go);
 
+        // 부모를 Pile로 설정 (버거는 Pile에서 관리)
+        go.transform.SetParent(transform);
+
         // 위치를 조정한다.
         Vector3 pos = GetPositionAt(_objects.Count - 1);
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using DG.Tweening;
 using UnityEngine;
 
@@ -21,6 +22,12 @@ public class Grill : UnlockableBase
 	public GameObject MaxObject;
 	public bool StopSpawnBurger = true;
 	
+	// 주문 큐 (Counter에서 받은 주문들을 관리)
+	private List<Define.BurgerRecipe> _orderQueue = new List<Define.BurgerRecipe>();
+	
+	// 인스펙터 표시용 (디버그)
+	[SerializeField] private List<string> _orderQueueDisplay = new List<string>();
+	
 	// 점멸 효과 관련
 	private Renderer _grillRenderer;
 	private Material _originalMaterial;
@@ -38,47 +45,17 @@ public class Grill : UnlockableBase
 		_interaction.InteractInterval = 0.2f;
 		_interaction.OnInteraction = OnWorkerBurgerInteraction;
 		_interaction.OnTriggerStart = OnGrillTriggerStart;
-		
-		// 점멸 효과를 위한 Renderer 및 Material 초기화
-		InitializeBlinkEffect();
+
+        InitBlinkEffect();
 	}
-	
-	private void OnEnable()
-	{
-		// Counter 이벤트 구독
-		Counter.OnPendingOrderAdded += StartBlinkEffect;
-		Counter.OnPendingOrdersCleared += StopBlinkEffect;
-		
-		// 현재 큐 상태 확인하여 점멸 시작
-		CheckPendingOrdersAndBlink();
-	}
-	
-	private void OnDisable()
-	{
-		// Counter 이벤트 구독 해제
-		Counter.OnPendingOrderAdded -= StartBlinkEffect;
-		Counter.OnPendingOrdersCleared -= StopBlinkEffect;
-		
-		// 점멸 효과 중지
-		StopBlinkEffect();
-	}
-	
+
 	/// <summary>
 	/// 점멸 효과를 위한 Renderer 및 Material 초기화
 	/// </summary>
-	private void InitializeBlinkEffect()
+	private void InitBlinkEffect()
 	{
-		// Grill 오브젝트의 Renderer 찾기 (자식 중 "Grill" 이름을 가진 오브젝트)
-		Transform grillChild = transform.Find("Grill");
-		if (grillChild == null)
-		{
-			// 직접 자식이 아니면 재귀적으로 찾기
-			GameObject grillChildObj = Utils.FindChild(gameObject, "Grill", true);
-			if (grillChildObj != null)
-			{
-				grillChild = grillChildObj.transform;
-			}
-		}
+	    // 직접 자식이 아니면 재귀적으로 찾기
+	    GameObject grillChild = Utils.FindChild(gameObject, "GrillBG", true);
 		
 		if (grillChild != null)
 		{
@@ -99,10 +76,93 @@ public class Grill : UnlockableBase
 	/// </summary>
 	private void CheckPendingOrdersAndBlink()
 	{
-		Counter counter = FindObjectOfType<Counter>();
-		if (counter != null && counter.HasPendingOrders())
+		if (_orderQueue.Count > 0)
 		{
 			StartBlinkEffect();
+		}
+		else
+		{
+			StopBlinkEffect();
+		}
+	}
+	
+	/// <summary>
+	/// Counter에서 주문을 받아 큐에 추가합니다.
+	/// </summary>
+	public void AddOrder(Define.BurgerRecipe recipe)
+	{
+		if (recipe.Bread == Define.EBreadType.None)
+			return;
+		
+		_orderQueue.Add(recipe);
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
+#endif
+		// 주문이 추가되었으므로 점멸 효과 시작
+		CheckPendingOrdersAndBlink();
+	}
+	
+	/// <summary>
+	/// 주문 큐에 주문이 있는지 확인합니다.
+	/// </summary>
+	public bool HasOrders()
+	{
+		return _orderQueue.Count > 0;
+	}
+	
+	/// <summary>
+	/// 주문 큐의 모든 주문을 가져옵니다 (CookingPopup에 전달)
+	/// </summary>
+	public List<Define.BurgerRecipe> GetOrders()
+	{
+		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_orderQueue);
+		_orderQueue.Clear();
+#if UNITY_EDITOR
+        // 인스펙터 표시용 업데이트
+        UpdateOrderQueueDisplay();
+#endif
+        // 주문을 가져갔으므로 점멸 효과 해제
+        CheckPendingOrdersAndBlink();
+		
+		return orders;
+	}
+	
+	/// <summary>
+	/// 인스펙터 표시용 주문 큐를 업데이트합니다.
+	/// </summary>
+	private void UpdateOrderQueueDisplay()
+	{
+		_orderQueueDisplay.Clear();
+		
+		foreach (var order in _orderQueue)
+		{
+			// 주문을 간단한 문자열로 변환
+			string orderText = $"빵:{order.Bread}, 패티:{order.Patty}({order.PattyCount}), ";
+			
+			if (order.Veggies != null && order.Veggies.Count > 0)
+			{
+				var veggieGroups = order.Veggies
+					.Where(v => v != Define.EVeggieType.None)
+					.GroupBy(v => v)
+					.ToList();
+				
+				var veggieList = new List<string>();
+				foreach (var group in veggieGroups)
+				{
+					string veggieName = group.Key == Define.EVeggieType.Lettuce ? "양상추" : "토마토";
+					veggieList.Add($"{veggieName}({group.Count()})");
+				}
+				orderText += $"야채:[{string.Join(", ", veggieList)}], ";
+			}
+			else
+			{
+				orderText += "야채:없음, ";
+			}
+			
+			orderText += $"소스1:{order.Sauce1Count}, 소스2:{order.Sauce2Count}";
+			
+			_orderQueueDisplay.Add(orderText);
 		}
 	}
 	
@@ -154,109 +214,99 @@ public class Grill : UnlockableBase
 		}
 	}
 
-	Coroutine _coSpawnBurger;
-
-	//IEnumerator CoSpawnBurgers()
-	//{
-	//	while(true)
-	//	{
-	//		// 최대치 미만이 될 때까지 대기 (여기 도달했다는 것은 미만 상태)
- //           yield return new WaitUntil(() => _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT);
-
-	//		// 미만이면 꺼준다
-	//		if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
-	//			MaxObject.SetActive(false);
-
-	//		if (StopSpawnBurger == false)
-	//		{
-	//			_burgers.SpawnObject();
-
-	//			// 스폰 후 최대치 도달 시 켠다
-	//			if (MaxObject != null && _burgers.ObjectCount == Define.GRILL_MAX_BURGER_COUNT)
-	//				MaxObject.SetActive(true);
-	//		}
-
-	//		yield return new WaitForSeconds(Define.GRILL_SPAWN_BURGER_INTERVAL);
-	//	}
-	//}
-
 	private void OnGrillTriggerStart(WorkerController wc)
 	{
-		// 플레이어만 팝업 오픈
+		// 플레이어만 처리
 		if (wc == null || wc.GetComponent<PlayerController>() == null)
 			return;
 
-		if (cookingPopup == null)
-			return;
-
-		// 이미 활성화된 팝업이 있으면 재사용
-		UI_CookingPopup existingPopup = FindObjectOfType<UI_CookingPopup>();
-		if (existingPopup != null && existingPopup.gameObject.activeInHierarchy)
+		// 버거가 있으면 OnInteraction에서 처리하므로 여기서는 팝업만 처리
+		// 버거가 없고 주문이 있을 때만 CookingPopup 열기
+		if (_burgers.ObjectCount == 0)
 		{
-			// 이미 열려있으면 아무것도 하지 않음
-			return;
-		}
+			// 주문 큐에 주문이 없으면 팝업을 열지 않음
+			if (!HasOrders())
+				return;
 
-		// 풀매니저의 PopupPool에서 비활성화된 팝업 찾기
-		UI_CookingPopup popup = null;
-		Transform popupPool = PoolManager.Instance.GetPopupPool();
-		
-		if (popupPool != null)
-		{
-			// PopupPool의 자식 중에서 비활성화된 UI_CookingPopup 찾기
-			for (int i = 0; i < popupPool.childCount; i++)
+			if (cookingPopup == null)
+				return;
+
+			// 이미 활성화된 팝업이 있으면 재사용
+			UI_CookingPopup existingPopup = FindObjectOfType<UI_CookingPopup>();
+			if (existingPopup != null && existingPopup.gameObject.activeInHierarchy)
 			{
-				Transform child = popupPool.GetChild(i);
-				if (child.name == cookingPopup.name)
+				// 이미 열려있으면 아무것도 하지 않음
+				return;
+			}
+
+			// 풀매니저의 PopupPool에서 비활성화된 팝업 찾기
+			UI_CookingPopup popup = null;
+			Transform popupPool = PoolManager.Instance.GetPopupPool();
+			
+			if (popupPool != null)
+			{
+				// PopupPool의 자식 중에서 비활성화된 UI_CookingPopup 찾기
+				for (int i = 0; i < popupPool.childCount; i++)
 				{
-					UI_CookingPopup foundPopup = child.GetComponent<UI_CookingPopup>();
-					if (foundPopup != null && !foundPopup.gameObject.activeSelf)
+					Transform child = popupPool.GetChild(i);
+					if (child.name == cookingPopup.name)
 					{
-						popup = foundPopup;
-						break;
+						UI_CookingPopup foundPopup = child.GetComponent<UI_CookingPopup>();
+						if (foundPopup != null && !foundPopup.gameObject.activeSelf)
+						{
+							popup = foundPopup;
+							break;
+						}
 					}
 				}
 			}
-		}
 
-		// 풀에서 찾지 못했으면 PoolManager를 통해 가져오기 (새로 생성 또는 풀에서 가져오기)
-		if (popup == null)
-		{
-			GameObject instance = PoolManager.Instance.Pop(cookingPopup);
-			popup = instance.GetComponent<UI_CookingPopup>();
-		}
-		
-		if (popup != null)
-		{
-			// 팝업 활성화
-			popup.gameObject.SetActive(true);
-			
-			// Counter에서 대기 중인 주문들을 가져와서 추가
-			Counter counter = FindObjectOfType<Counter>();
-			if (counter != null)
+			// 풀에서 찾지 못했으면 PoolManager를 통해 가져오기 (새로 생성 또는 풀에서 가져오기)
+			if (popup == null)
 			{
-				List<Define.BurgerRecipe> pendingOrders = counter.GetPendingOrders();
-				foreach (Define.BurgerRecipe order in pendingOrders)
-				{
-					popup.AddOrder(order);
-				}
+				GameObject instance = PoolManager.Instance.Pop(cookingPopup);
+				popup = instance.GetComponent<UI_CookingPopup>();
+			}
+			
+			if (popup != null)
+			{
+				// 팝업 활성화
+				popup.gameObject.SetActive(true);
 				
-				// 주문을 가져갔으므로 점멸 효과 해제 (GetPendingOrders 내부에서 이미 호출되지만 안전을 위해)
-				StopBlinkEffect();
+				// 주문 큐에서 모든 주문을 가져와서 팝업에 전달 (팝업 내부에서 최대 3개만 표시)
+				List<Define.BurgerRecipe> orders = GetOrders();
+				popup.AddOrders(orders);
 			}
 		}
 	}
 
 	public void OnWorkerBurgerInteraction(WorkerController pc)
 	{
+		if (pc == null) 
+			return;
+
 		// 쓰레기 운반 상태에선 안 됨.
 		if (pc.Tray.CurrentTrayObjectType == Define.EObjectType.Trash)
 			return;
 
-		_burgers.PileToTray(pc.Tray);
+		// 플레이어만 처리
+		if (pc.GetComponent<PlayerController>() == null)
+			return;
 
-		// 가져가서 개수가 줄어들었으면 끈다
-		if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
-			MaxObject.SetActive(false);
+		// 그릴에 버거가 있으면 트레이에 올리기
+		if (_burgers.ObjectCount > 0)
+		{
+			// 트레이가 비어있거나 버거만 있고, 최대 개수 미만이면 받을 수 있음
+			if ((pc.Tray.CurrentTrayObjectType == Define.EObjectType.None || 
+			     pc.Tray.CurrentTrayObjectType == Define.EObjectType.Burger) &&
+			    pc.Tray.TotalItemCount < Define.MAX_BURGER_ADD_COUNT)
+			{
+				_burgers.PileToTray(pc.Tray);
+
+				// 가져가서 개수가 줄어들었으면 끈다
+				if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+					MaxObject.SetActive(false);
+			}
+		}
 	}
 }
