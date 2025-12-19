@@ -117,11 +117,34 @@ public class UI_GameScene : MonoBehaviour
 		});
 	}
 
+	private Tween _toastFadeTween;
+
 	public void SetToastMessage(string message)
 	{
+		// 기존 페이드 애니메이션 중지
+		_toastFadeTween?.Kill();
+		_toastMessageText.DOKill();
+
 		_toastMessageText.text = message;
 		_toastMessageText.enabled = (string.IsNullOrEmpty(message) == false);
 
-		
+		if (string.IsNullOrEmpty(message) == false)
+		{
+			// 페이드 인 효과
+			var color = _toastMessageText.color;
+			color.a = 0f;
+			_toastMessageText.color = color;
+
+			_toastFadeTween = _toastMessageText.DOFade(1f, 0.3f)
+				.SetEase(Ease.OutQuad);
+		}
+	}
+
+	/// <summary>
+	/// 튜토리얼 전용: 토스트 메시지 텍스트 컴포넌트를 반환합니다.
+	/// </summary>
+	public TextMeshProUGUI GetToastMessageText()
+	{
+		return _toastMessageText;
 	}
 }

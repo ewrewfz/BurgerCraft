@@ -10,8 +10,9 @@ public enum ETutorialState
 	CreateFirstTable,
 	CreateBurgerMachine,
 	CreateCounter,
-	PickupBurger,
-	PutBurgerOnCounter,
+	TakeOrders,
+    MaketheBurger,
+    PutBurgerOnCounter,
 	SellBurger,
 	CleanTable,
 	CreateSecondTable,
@@ -91,25 +92,26 @@ public class Tutorial : MonoBehaviour
 
 			counter.SetUnlockedState(EUnlockedState.ProcessingConstruction);
 			yield return new WaitUntil(() => counter.IsUnlocked);
-			_state = ETutorialState.PickupBurger;
+			_state = ETutorialState.TakeOrders;
 		}
 
 		counter.SetUnlockedState(EUnlockedState.Unlocked);
 		grill.StopSpawnBurger = false;
 
-		if (_state == ETutorialState.PickupBurger)
+		if (_state == ETutorialState.TakeOrders)
 		{
-			GameManager.Instance.GameSceneUI.SetToastMessage("Pickup Burger");
+			GameManager.Instance.GameSceneUI.SetToastMessage("Take Orders");
 
-			yield return new WaitUntil(() => grill.CurrentWorker != null);
-			_state = ETutorialState.PutBurgerOnCounter;
+			yield return new WaitUntil(() => counter.CurrentCashierWorker != null);
+			_state = ETutorialState.MaketheBurger;
 		}
 				
-		if (_state == ETutorialState.PutBurgerOnCounter)
-		{
-			GameManager.Instance.GameSceneUI.SetToastMessage("Put Burger On Counter");
+		if (_state == ETutorialState.MaketheBurger)
 
-			yield return new WaitUntil(() => counter.CurrentBurgerWorker != null);
+        {
+			GameManager.Instance.GameSceneUI.SetToastMessage("Make the Burger");
+
+			yield return new WaitUntil(() => grill.CurrentWorker != null);
 			_state = ETutorialState.SellBurger;
 		}
 
@@ -160,7 +162,8 @@ public class Tutorial : MonoBehaviour
 
 		office.SetUnlockedState(EUnlockedState.Unlocked);
 
-		GameManager.Instance.GameSceneUI.SetToastMessage("");
+		// "Enjoy Game!" 메시지를 3초간 표시 후 페이드 아웃으로 사라지게 하기
+		yield return Utils.ShowTutorialToastMessage("Enjoy Game!", 3f, 0.5f);
 
 		yield return null;
 	}

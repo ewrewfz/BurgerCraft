@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static Define;
+using DG.Tweening;
+using TMPro;
 
 
 public static class Utils
@@ -82,6 +84,48 @@ public static class Utils
 		if (money < 1000000000) return (money / 1000000f).ToString("0.##") + "m"; // (m)
 		if (money < 1000000000000) return (money / 1000000000f).ToString("0.##") + "b"; // (b)
 		return (money / 1000000000000f).ToString("0.##") + "t"; // (t)
+	}
+
+	/// <summary>
+	/// 튜토리얼 전용: 토스트 메시지를 일정 시간 표시한 후 페이드 아웃으로 사라지게 합니다.
+	/// </summary>
+	/// <param name="message">표시할 메시지</param>
+	/// <param name="displayDuration">표시 시간 (초)</param>
+	/// <param name="fadeOutDuration">페이드 아웃 시간 (초)</param>
+	/// <returns>코루틴 (yield return으로 사용)</returns>
+	public static IEnumerator ShowTutorialToastMessage(string message, float displayDuration = 3f, float fadeOutDuration = 0.5f)
+	{
+		if (GameManager.Instance == null || GameManager.Instance.GameSceneUI == null)
+			yield break;
+
+		// 메시지 표시
+		GameManager.Instance.GameSceneUI.SetToastMessage(message);
+
+		// 표시 시간 대기
+		yield return new WaitForSeconds(displayDuration);
+
+		// 페이드 아웃 효과
+		var toastText = GameManager.Instance.GameSceneUI.GetToastMessageText();
+		if (toastText != null)
+		{
+			// DOTween을 사용한 페이드 아웃
+			toastText.DOFade(0f, fadeOutDuration)
+				.SetEase(Ease.OutQuad)
+				.OnComplete(() =>
+				{
+					// 페이드 아웃 완료 후 메시지 지우기
+					GameManager.Instance.GameSceneUI.SetToastMessage("");
+					// 알파값 복원 (다음 메시지를 위해)
+					var color = toastText.color;
+					color.a = 1f;
+					toastText.color = color;
+				});
+		}
+		else
+		{
+			// 페이드 아웃이 불가능하면 그냥 지우기
+			GameManager.Instance.GameSceneUI.SetToastMessage("");
+		}
 	}
 
 	/// <summary>
