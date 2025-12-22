@@ -163,7 +163,7 @@ GameObject:
   - component: {fileID: 1049567665444708880}
   - component: {fileID: 7010474582726608907}
   - component: {fileID: 7118533438908031961}
-  - component: {fileID: 4388693789109511997}
+  - component: {fileID: 5236552031812738832}
   m_Layer: 5
   m_Name: UI_CookingComplete
   m_TagString: Untagged
@@ -260,7 +260,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &4388693789109511997
+--- !u!114 &5236552031812738832
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -273,7 +273,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _StarImage: {fileID: 556054862031092661}
-  _closeButton: {fileID: 766320277130835036}
+  _nextButton: {fileID: 766320277130835036}
 --- !u!1 &3651475121629400303
 GameObject:
   m_ObjectHideFlags: 0

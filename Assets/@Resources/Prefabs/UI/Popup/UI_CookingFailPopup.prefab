@@ -322,7 +322,7 @@ GameObject:
   - component: {fileID: 2653411282926079422}
   - component: {fileID: 2370944381203681037}
   - component: {fileID: 7297771729698171602}
-  - component: {fileID: -3599952806403958656}
+  - component: {fileID: 7583069876442897525}
   m_Layer: 5
   m_Name: UI_CookingFailPopup
   m_TagString: Untagged
@@ -417,7 +417,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &-3599952806403958656
+--- !u!114 &7583069876442897525
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -426,7 +426,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4767804568502840247}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 74dc5b5758faffa4a984a76abd7becd9, type: 3}
+  m_Script: {fileID: 11500000, guid: 3ae217c470c8b7e4790327910c85b3d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _failImage1: {fileID: 7067503425832388202}

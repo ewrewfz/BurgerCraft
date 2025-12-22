@@ -322,7 +322,7 @@ GameObject:
   - component: {fileID: 2653411282926079422}
   - component: {fileID: 2370944381203681037}
   - component: {fileID: 7297771729698171602}
-  - component: {fileID: 773242547510855869}
+  - component: {fileID: 253706113270560070}
   m_Layer: 5
   m_Name: UI_FailPopup
   m_TagString: Untagged
@@ -417,7 +417,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &773242547510855869
+--- !u!114 &253706113270560070
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -426,7 +426,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4767804568502840247}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e80db9feb0edff8489f7005a9822afe2, type: 3}
+  m_Script: {fileID: 11500000, guid: 6ba8ad2f56faff7409d1ffdff1e09d19, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _failImage1: {fileID: 7067503425832388202}
