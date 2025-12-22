@@ -64,7 +64,7 @@ public class UI_CookingPopup : MonoBehaviour
     private UI_CookingReceipt _currentReceipt;
     private Define.BurgerRecipe _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
     private UI_CookingFailPopup _currentFailPopup;
-    private bool _resetFailOnOpen = false;
+    private bool _isMaxFailReached = false; // 3회 실패로 인한 종료인지 확인
     
     // 주문 큐 (Grill에서 받은 모든 주문을 저장)
     private readonly Queue<Define.BurgerRecipe> _orderQueue = new Queue<Define.BurgerRecipe>();
@@ -93,70 +93,132 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void OnDisable()
     {
-        // 팝업이 비활성화될 때 처리되지 않은 주문을 Grill에 다시 반환
-        if (_orderQueue.Count > 0)
-        {
-            // 큐에 남아있는 주문들을 리스트로 변환
-            List<Define.BurgerRecipe> remainingOrders = new List<Define.BurgerRecipe>(_orderQueue);
-            
-            // Grill에 주문 반환
-            Grill grill = FindObjectOfType<Grill>();
-            if (grill != null)
-            {
-                grill.ReturnOrders(remainingOrders);
-            }
-        }
-        
+        // 3회 실패로 인한 종료가 아닐 때만 처리되지 않은 주문을 Grill에 다시 반환
+        // _orderQueue는 사용하지 않음 - _deliveredOrderQueue는 Grill에서 직접 관리
         // 팝업이 비활성화될 때 정리 작업
         // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
     }
 
     /// <summary>
-    /// Grill에서 주문 목록을 받아 큐에 저장하고, 최대 3개까지 영수증 표시
+    /// Grill에서 주문 목록을 받아 _deliveredOrderQueue의 데이터를 직접 사용하여 영수증 생성
     /// </summary>
     public void AddOrders(List<Define.BurgerRecipe> orders)
     {
         if (orders == null || orders.Count == 0)
             return;
         
-        // 이미 표시된 영수증의 레시피는 제외하고 큐에 추가 (중복 방지)
-        foreach (var order in orders)
-        {
-            if (order.Bread != Define.EBreadType.None)
-            {
-                // 이미 표시된 영수증에 있는 주문인지 확인
-                bool alreadyDisplayed = false;
-                foreach (var receipt in _activeReceipts)
-                {
-                    if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, order))
-                    {
-                        alreadyDisplayed = true;
-                        break;
-                    }
-                }
-                
-                // 이미 표시되지 않은 주문만 큐에 추가
-                if (!alreadyDisplayed)
-                {
-                    _orderQueue.Enqueue(order);
-                }
-            }
-        }
-        
-        // 영수증 리프레시 (최대 3개까지 표시)
-        RefreshReceipts();
+        // _deliveredOrderQueue의 데이터를 직접 사용하여 영수증 생성 (최대 3개까지)
+        // _orderQueue는 사용하지 않음 - _deliveredOrderQueue만 사용
+        RefreshReceiptsFromDeliveredQueue(orders);
     }
     
     /// <summary>
-    /// 주문 큐에서 최대 3개까지 영수증을 표시합니다.
+    /// _deliveredOrderQueue의 데이터를 직접 사용하여 영수증 생성
+    /// 실제 _deliveredOrderQueue에 있는 데이터만 표시하고, 없는 영수증은 제거
+    /// </summary>
+    private void RefreshReceiptsFromDeliveredQueue(List<Define.BurgerRecipe> deliveredOrders)
+    {
+        // 1단계: _deliveredOrderQueue에 없는 영수증 제거
+        var receiptsToRemove = new List<UI_CookingReceipt>();
+        foreach (var receipt in _activeReceipts)
+        {
+            if (receipt == null)
+            {
+                receiptsToRemove.Add(receipt);
+                continue;
+            }
+            
+            // deliveredOrders에 해당 영수증의 레시피가 있는지 확인
+            bool found = false;
+            if (deliveredOrders != null && deliveredOrders.Count > 0)
+            {
+                foreach (var order in deliveredOrders)
+                {
+                    if (UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            // _deliveredOrderQueue에 없으면 제거 대상
+            if (!found)
+            {
+                receiptsToRemove.Add(receipt);
+            }
+        }
+        
+        // 제거 대상 영수증 삭제
+        foreach (var receipt in receiptsToRemove)
+        {
+            _activeReceipts.Remove(receipt);
+            if (_currentReceipt == receipt)
+            {
+                _currentReceipt = null;
+            }
+            if (receipt != null)
+            {
+                Destroy(receipt.gameObject);
+            }
+        }
+        
+        // 2단계: _deliveredOrderQueue에 있지만 아직 표시되지 않은 주문 추가 (최대 3개까지)
+        if (deliveredOrders == null || deliveredOrders.Count == 0)
+            return;
+        
+        // 각 주문에 대해 이미 표시된 개수를 세어서 추가할지 결정
+        foreach (var order in deliveredOrders)
+        {
+            if (_activeReceipts.Count >= 3)
+                break;
+            
+            if (order.Bread == Define.EBreadType.None)
+                continue;
+            
+            // deliveredOrders에서 같은 레시피의 개수 세기
+            int orderCountInDelivered = 0;
+            foreach (var o in deliveredOrders)
+            {
+                if (UI_OrderSystem.IsMatch(o, order))
+                {
+                    orderCountInDelivered++;
+                }
+            }
+            
+            // 이미 표시된 영수증에서 같은 레시피의 개수 세기
+            int displayedCount = 0;
+            foreach (var receipt in _activeReceipts)
+            {
+                if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                {
+                    displayedCount++;
+                }
+            }
+            
+            // 표시된 개수가 deliveredOrders의 개수보다 적으면 추가
+            if (displayedCount < orderCountInDelivered)
+            {
+                AddReceipt(order);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 주문 큐에서 최대 3개까지 영수증을 표시합니다. (_deliveredOrderQueue 사용)
     /// </summary>
     private void RefreshReceipts()
     {
-        // 현재 표시된 영수증이 3개 미만이면 큐에서 가져와서 추가
-        while (_activeReceipts.Count < 3 && _orderQueue.Count > 0)
+        // _orderQueue는 사용하지 않음 - _deliveredOrderQueue만 사용
+        // Grill에서 현재 _deliveredOrderQueue 상태를 가져와서 영수증 생성
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill != null)
         {
-            Define.BurgerRecipe recipe = _orderQueue.Dequeue();
-            AddReceipt(recipe);
+            List<Define.BurgerRecipe> currentDeliveredOrders = grill.GetOrders();
+            if (currentDeliveredOrders != null && currentDeliveredOrders.Count > 0)
+            {
+                RefreshReceiptsFromDeliveredQueue(currentDeliveredOrders);
+            }
         }
     }
     
@@ -176,8 +238,16 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
 
+        // Grill에서 주문 번호 가져오기
+        Grill grill = FindObjectOfType<Grill>();
+        string orderNumber = null;
+        if (grill != null)
+        {
+            orderNumber = grill.GetOrderNumberByRecipe(recipe);
+        }
+
         UI_CookingReceipt receipt = Instantiate(_receiptPrefab, _receiptParent);
-        receipt.Init(recipe);
+        receipt.Init(recipe, orderNumber);
         
         // 영수증 클릭 이벤트 등록
         receipt.OnReceiptClicked = OnReceiptClicked;
@@ -198,8 +268,18 @@ public class UI_CookingPopup : MonoBehaviour
         if (recipe.Bread == Define.EBreadType.None)
             return;
         
-        _orderQueue.Enqueue(recipe);
-        RefreshReceipts();
+        // _orderQueue는 사용하지 않음 - Grill에 직접 추가
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill != null)
+        {
+            grill.AddOrder(recipe);
+            // Grill에서 _deliveredOrderQueue 상태를 가져와서 영수증 생성
+            List<Define.BurgerRecipe> currentDeliveredOrders = grill.GetOrders();
+            if (currentDeliveredOrders != null && currentDeliveredOrders.Count > 0)
+            {
+                RefreshReceiptsFromDeliveredQueue(currentDeliveredOrders);
+            }
+        }
     }
     
     /// <summary>
@@ -336,10 +416,11 @@ public class UI_CookingPopup : MonoBehaviour
         switch (ingredient)
         {
             case EIngredientType.Patty:
-                // 선택된 receipt의 패티 개수까지만 추가 가능
-                if (_currentRecipe.PattyCount >= requestedRecipe.PattyCount)
+                // 선택된 receipt의 패티 개수와 5개 중 작은 값까지만 추가 가능
+                int maxPattyCount = Mathf.Min(requestedRecipe.PattyCount, 5);
+                if (_currentRecipe.PattyCount >= maxPattyCount)
                 {
-                    Debug.LogWarning($"패티는 최대 {requestedRecipe.PattyCount}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"패티는 최대 {maxPattyCount}개까지만 추가 가능합니다.");
                     return false;
                 }
 
@@ -352,14 +433,6 @@ public class UI_CookingPopup : MonoBehaviour
                 if (_currentRecipe.Veggies == null)
                     _currentRecipe.Veggies = new List<Define.EVeggieType>();
 
-                // 선택된 receipt의 야채 개수까지만 추가 가능
-                int requestedVeggieCount = requestedRecipe.Veggies != null ? requestedRecipe.Veggies.Count : 0;
-                if (_currentRecipe.Veggies.Count >= requestedVeggieCount)
-                {
-                    Debug.LogWarning($"야채는 최대 {requestedVeggieCount}개까지만 추가 가능합니다.");
-                    return false;
-                }
-
                 Define.EVeggieType veggieType = ingredient == EIngredientType.Lettuce 
                     ? Define.EVeggieType.Lettuce 
                     : Define.EVeggieType.Tomato;
@@ -369,9 +442,15 @@ public class UI_CookingPopup : MonoBehaviour
                     ? requestedRecipe.Veggies.Count(v => v == veggieType) 
                     : 0;
                 
-                if (_currentRecipe.Veggies.Count(v => v == veggieType) >= requestedVeggieTypeCount)
+                // 최대 5개까지 허용
+                int maxVeggieTypeCount = Mathf.Min(requestedVeggieTypeCount, 5);
+                
+                // 현재 추가된 해당 야채의 개수 확인
+                int currentVeggieTypeCount = _currentRecipe.Veggies.Count(v => v == veggieType);
+                
+                if (currentVeggieTypeCount >= maxVeggieTypeCount)
                 {
-                    Debug.LogWarning($"{veggieType}는 최대 {requestedVeggieTypeCount}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"{veggieType}는 최대 {maxVeggieTypeCount}개까지만 추가 가능합니다.");
                     return false;
                 }
 
@@ -379,20 +458,22 @@ public class UI_CookingPopup : MonoBehaviour
                 return true;
 
             case EIngredientType.Sauce1:
-                // 선택된 receipt의 소스1 개수까지만 추가 가능
-                if (_currentRecipe.Sauce1Count >= requestedRecipe.Sauce1Count)
+                // 선택된 receipt의 소스1 개수와 5개 중 작은 값까지만 추가 가능
+                int maxSauce1Count = Mathf.Min(requestedRecipe.Sauce1Count, 5);
+                if (_currentRecipe.Sauce1Count >= maxSauce1Count)
                 {
-                    Debug.LogWarning($"소스1은 최대 {requestedRecipe.Sauce1Count}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"소스1은 최대 {maxSauce1Count}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce1Count++;
                 return true;
 
             case EIngredientType.Sauce2:
-                // 선택된 receipt의 소스2 개수까지만 추가 가능
-                if (_currentRecipe.Sauce2Count >= requestedRecipe.Sauce2Count)
+                // 선택된 receipt의 소스2 개수와 5개 중 작은 값까지만 추가 가능
+                int maxSauce2Count = Mathf.Min(requestedRecipe.Sauce2Count, 5);
+                if (_currentRecipe.Sauce2Count >= maxSauce2Count)
                 {
-                    Debug.LogWarning($"소스2는 최대 {requestedRecipe.Sauce2Count}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"소스2는 최대 {maxSauce2Count}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce2Count++;
@@ -743,20 +824,7 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void ResetFailPopupState()
     {
-        if (_resetFailOnOpen)
-        {
-            _resetFailOnOpen = false;
-            if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
-            {
-                // Hide()를 통해 풀에 반환 (중복 방지)
-                if (_currentFailPopup.gameObject.activeSelf)
-                {
-                    _currentFailPopup.Hide();
-                }
-            }
-            _currentFailPopup = null;
-        }
-
+        // 실패 팝업 정리
         if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
         {
             // 이미 비활성화되어 있으면 풀에 이미 반환된 상태
@@ -780,7 +848,20 @@ public class UI_CookingPopup : MonoBehaviour
             BurgerPile burgerPile = grill.GetComponentInChildren<BurgerPile>();
             if (burgerPile != null && burgerPile.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
             {
-                burgerPile.SpawnObject();
+                // 버거 생성
+                GameObject burger = burgerPile.SpawnObjectWithOrderNumber();
+                
+                // 주문 번호 부여
+                if (burger != null && _currentReceipt != null)
+                {
+                    string orderNumber = _currentReceipt.OrderNumber;
+                    BurgerOrderNumber orderNumberComponent = burger.GetComponent<BurgerOrderNumber>();
+                    if (orderNumberComponent == null)
+                    {
+                        orderNumberComponent = burger.AddComponent<BurgerOrderNumber>();
+                    }
+                    orderNumberComponent.OrderNumber = orderNumber;
+                }
             }
             
             // 완료된 주문을 Grill의 큐에서 제거
@@ -800,27 +881,20 @@ public class UI_CookingPopup : MonoBehaviour
             _currentReceipt = null;
         }
 
-        // 완료된 주문을 팝업의 큐에서도 제거 (중복 방지)
-        if (completedRecipe.Bread != Define.EBreadType.None)
+        // 완료된 주문은 이미 Grill.RemoveOrder()에서 _deliveredOrderQueue에서 제거됨
+        // _orderQueue는 사용하지 않으므로 제거 로직 불필요
+
+        // 다음 주문을 _deliveredOrderQueue에서 가져와서 영수증 리프레시
+        // Grill에서 현재 _deliveredOrderQueue 상태를 가져와서 영수증 생성
+        Grill grillForRefresh = FindObjectOfType<Grill>();
+        if (grillForRefresh != null)
         {
-            var tempQueue = new Queue<Define.BurgerRecipe>();
-            while (_orderQueue.Count > 0)
+            List<Define.BurgerRecipe> currentDeliveredOrders = grillForRefresh.GetOrders();
+            if (currentDeliveredOrders != null && currentDeliveredOrders.Count > 0)
             {
-                var order = _orderQueue.Dequeue();
-                if (!UI_OrderSystem.IsMatch(order, completedRecipe))
-                {
-                    tempQueue.Enqueue(order);
-                }
-            }
-            _orderQueue.Clear();
-            while (tempQueue.Count > 0)
-            {
-                _orderQueue.Enqueue(tempQueue.Dequeue());
+                RefreshReceiptsFromDeliveredQueue(currentDeliveredOrders);
             }
         }
-
-        // 다음 주문을 큐에서 가져와서 영수증 리프레시
-        RefreshReceipts();
 
         // 다음 영수증 선택 (있는 경우)
         if (_activeReceipts.Count > 0)
@@ -843,13 +917,49 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void ShowFailPopup()
     {
-        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
+        // UI_CookingPopup 자체가 비활성화되어 있으면 아무것도 하지 않음
+        if (gameObject == null || !gameObject.activeSelf)
         {
-            _currentFailPopup.AddFailCount();
-            _currentFailPopup.Show();
             return;
         }
+        
+        // 팝업이 이미 비활성화되어 있으면 새로 생성
+        if (_currentFailPopup != null)
+        {
+            // gameObject가 null이거나 비활성화되어 있으면 null로 설정하고 새로 생성
+            if (_currentFailPopup.gameObject == null || !_currentFailPopup.gameObject.activeSelf)
+            {
+                _currentFailPopup = null;
+            }
+            else
+            {
+                // 유효한 팝업이 있으면 재사용
+                try
+                {
+                    // 손님 정보 설정 (첫 번째 픽업 큐 손님)
+                    Counter counter = FindObjectOfType<Counter>();
+                    if (counter != null)
+                    {
+                        GuestController firstGuest = counter.GetFirstPickupQueueGuest();
+                        if (firstGuest != null)
+                        {
+                            _currentFailPopup.SetAssociatedGuest(firstGuest);
+                        }
+                    }
+                    
+                    _currentFailPopup.AddFailCount();
+                    _currentFailPopup.Show();
+                    return;
+                }
+                catch (System.NullReferenceException)
+                {
+                    // 예외 발생 시 null로 설정하고 새로 생성
+                    _currentFailPopup = null;
+                }
+            }
+        }
 
+        // 팝업이 없거나 비활성화되어 있으면 새로 생성
         GameObject prefab = _failPopupPrefab;
         if (prefab == null)
         {
@@ -866,8 +976,25 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
         
+        // PoolManager가 null이면 생성 불가
+        if (PoolManager.Instance == null)
+        {
+            Debug.LogWarning("PoolManager.Instance가 null입니다.");
+            return;
+        }
+        
         GameObject popupObj = PoolManager.Instance.Pop(prefab);
-        popupObj.transform.SetParent(PoolManager.Instance.GetPopupPool(), false);
+        if (popupObj == null)
+        {
+            Debug.LogWarning("PoolManager.Pop()이 null을 반환했습니다.");
+            return;
+        }
+        
+        Transform popupPool = PoolManager.Instance.GetPopupPool();
+        if (popupPool != null)
+        {
+            popupObj.transform.SetParent(popupPool, false);
+        }
         
         _currentFailPopup = popupObj.GetComponent<UI_CookingFailPopup>();
         if (_currentFailPopup == null)
@@ -876,25 +1003,250 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
         
-        _currentFailPopup.AddFailCount();
-        
-        _currentFailPopup.OnNextButtonClicked = () =>
+        try
         {
-            if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
+            // 손님 정보 설정 (첫 번째 픽업 큐 손님)
+            Counter counter = FindObjectOfType<Counter>();
+            if (counter != null)
             {
+                GuestController firstGuest = counter.GetFirstPickupQueueGuest();
+                if (firstGuest != null)
+                {
+                    _currentFailPopup.SetAssociatedGuest(firstGuest);
+                }
+            }
+            
+            _currentFailPopup.OnNextButtonClicked = () =>
+            {
+                if (_currentFailPopup != null && _currentFailPopup.gameObject != null && _currentFailPopup.gameObject.activeSelf)
+                {
+                    _currentFailPopup.Hide();
+                }
+            };
+
+            _currentFailPopup.OnMaxFailReached = () =>
+            {
+                HandleMaxFailReached();
+            };
+            
+            // Show() 먼저 호출하여 손님의 FailCount를 가져온 후, AddFailCount() 호출
+            _currentFailPopup.Show();
+            _currentFailPopup.AddFailCount();
+        }
+        catch (System.NullReferenceException)
+        {
+            // 예외 발생 시 정리
+            if (popupObj != null)
+            {
+                PoolManager.Instance.Push(popupObj);
+            }
+            _currentFailPopup = null;
+        }
+    }
+
+    /// <summary>
+    /// 3회 실패 시 처리: 실패한 영수증의 주문 번호에 해당하는 손님을 leavepos로 보내고, _deliveredOrderQueue에서 주문 삭제
+    /// </summary>
+    private void HandleMaxFailReached()
+    {
+        // Counter 가져오기
+        Counter counter = FindObjectOfType<Counter>();
+        if (counter == null)
+        {
+            Debug.LogWarning("[UI_CookingPopup] Counter를 찾을 수 없습니다.");
+            return;
+        }
+
+        // 실패한 영수증의 주문 번호 가져오기
+        string failedOrderNumber = null;
+        if (_currentReceipt != null)
+        {
+            failedOrderNumber = _currentReceipt.OrderNumber;
+        }
+        
+        // 주문 번호로 해당 손님 찾기
+        GuestController failedGuest = null;
+        if (!string.IsNullOrEmpty(failedOrderNumber))
+        {
+            failedGuest = counter.GetGuestByOrderNumber(failedOrderNumber);
+        }
+        
+        // 주문 번호로 손님을 찾지 못했으면 첫 번째 픽업 큐 손님으로 폴백 (하위 호환성)
+        if (failedGuest == null)
+        {
+            failedGuest = counter.GetFirstPickupQueueGuest();
+            if (failedGuest == null)
+            {
+                Debug.LogWarning("[UI_CookingPopup] 실패한 주문 번호에 해당하는 손님을 찾을 수 없습니다.");
+                return;
+            }
+        }
+        
+        // 주문 번호가 있으면 주문 번호로 삭제, 없으면 게스트 ID로 삭제
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill != null)
+        {
+            if (!string.IsNullOrEmpty(failedOrderNumber))
+            {
+                // 주문 번호를 기준으로 주문 삭제
+                grill.RemoveOrdersByOrderNumber(failedOrderNumber);
+            }
+            else
+            {
+                // 게스트 ID를 기반으로 주문 삭제 (폴백)
+                int orderCount = counter.GetGuestOrderCount(failedGuest);
+                int guestId = failedGuest.GetInstanceID();
+                if (orderCount > 0)
+                {
+                    grill.RemoveGuestOrders(guestId, orderCount);
+                }
+            }
+        }
+
+        // 실패한 영수증 제거 (3회 실패한 영수증)
+        if (_currentReceipt != null)
+        {
+            _activeReceipts.Remove(_currentReceipt);
+            Destroy(_currentReceipt.gameObject);
+            _currentReceipt = null;
+        }
+
+        // 실패한 주문 번호에 해당하는 손님을 leavepos로 보내기
+        counter.ProcessOrderComplete(failedGuest, true);
+
+        // CookingFail 팝업 완전히 초기화 및 정리 (fail count 리셋)
+        if (_currentFailPopup != null && _currentFailPopup.gameObject != null)
+        {
+            if (_currentFailPopup.gameObject.activeSelf)
+            {
+                _currentFailPopup.ResetFailCount(); // fail count 리셋
                 _currentFailPopup.Hide();
             }
-        };
+            _currentFailPopup = null;
+        }
 
-        _currentFailPopup.OnMaxFailReached = () =>
+        // 영수증 리프레시 (삭제된 주문을 제외한 나머지 주문만 표시)
+        RefreshReceiptsAfterFail();
+
+        // 다음 영수증 선택 (있는 경우)
+        if (_activeReceipts.Count > 0)
         {
-            _resetFailOnOpen = true;
-            // PoolManager에 반환
-            gameObject.SetActive(false);
-            PoolManager.Instance.Push(gameObject);
-        };
+            SelectReceipt(_activeReceipts[0]);
+            ResetCurrentBurger();
+        }
+        else
+        {
+            // 영수증이 없으면 버거 리셋만
+            ResetCurrentBurger();
+        }
+
+        // 3회 실패 플래그 설정 (OnDisable에서 ReturnOrders를 호출하지 않도록)
+        _isMaxFailReached = true;
+
+        // 팝업 정리
+        gameObject.SetActive(false);
+        PoolManager.Instance.Push(gameObject);
+    }
+    
+    /// <summary>
+    /// 실패 후 영수증 리프레시 (삭제된 주문을 제외한 나머지 주문만 표시)
+    /// </summary>
+    private void RefreshReceiptsAfterFail()
+    {
+        // Grill에서 현재 _deliveredOrderQueue 상태를 가져와서 영수증 재생성
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill == null)
+            return;
         
-        _currentFailPopup.Show();
+        List<Define.BurgerRecipe> currentDeliveredOrders = grill.GetOrders();
+        if (currentDeliveredOrders == null || currentDeliveredOrders.Count == 0)
+        {
+            // 주문이 없으면 모든 영수증 제거
+            foreach (var receipt in _activeReceipts)
+            {
+                if (receipt != null)
+                {
+                    Destroy(receipt.gameObject);
+                }
+            }
+            _activeReceipts.Clear();
+            _currentReceipt = null;
+            return;
+        }
+        
+        // 현재 표시된 영수증 중에서 _deliveredOrderQueue에 없는 것 제거
+        var receiptsToRemove = new List<UI_CookingReceipt>();
+        foreach (var receipt in _activeReceipts)
+        {
+            if (receipt == null)
+                continue;
+                
+            bool found = false;
+            foreach (var order in currentDeliveredOrders)
+            {
+                if (UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found)
+            {
+                receiptsToRemove.Add(receipt);
+            }
+        }
+        
+        // 찾지 못한 영수증 제거
+        foreach (var receipt in receiptsToRemove)
+        {
+            _activeReceipts.Remove(receipt);
+            if (_currentReceipt == receipt)
+            {
+                _currentReceipt = null;
+            }
+            if (receipt != null)
+            {
+                Destroy(receipt.gameObject);
+            }
+        }
+        
+        // _deliveredOrderQueue에 있지만 아직 표시되지 않은 주문 추가 (최대 3개까지)
+        // 각 주문에 대해 이미 표시된 개수를 세어서 추가할지 결정
+        foreach (var order in currentDeliveredOrders)
+        {
+            if (_activeReceipts.Count >= 3)
+                break;
+                
+            if (order.Bread == Define.EBreadType.None)
+                continue;
+            
+            // currentDeliveredOrders에서 같은 레시피의 개수 세기
+            int orderCountInDelivered = 0;
+            foreach (var o in currentDeliveredOrders)
+            {
+                if (UI_OrderSystem.IsMatch(o, order))
+                {
+                    orderCountInDelivered++;
+                }
+            }
+            
+            // 이미 표시된 영수증에서 같은 레시피의 개수 세기
+            int displayedCount = 0;
+            foreach (var receipt in _activeReceipts)
+            {
+                if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                {
+                    displayedCount++;
+                }
+            }
+            
+            // 표시된 개수가 currentDeliveredOrders의 개수보다 적으면 추가
+            if (displayedCount < orderCountInDelivered)
+            {
+                AddReceipt(order);
+            }
+        }
     }
 
     #endregion

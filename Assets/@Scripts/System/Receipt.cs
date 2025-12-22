@@ -26,6 +26,7 @@ public class Receipt
     public string id;                         // 영수증 ID (세션 고유값)
     public DateTime createdAt;                // 생성 시각
     public CraftedBurger burger;              // 제작 버거 정보(레시피+가격 내역)
+    public string OrderNumberText;             // 주문한 손님 번호
 
     public int GetTotal() => burger != null ? burger.totalPrice : 0;
 }

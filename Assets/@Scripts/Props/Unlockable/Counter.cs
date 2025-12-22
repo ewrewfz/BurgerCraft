@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 using static Define;
 
 // 1. 햄버거 쌓이는 Pile (OK)
@@ -46,6 +47,12 @@ public class Counter : UnlockableBase
 	
 	// 손님별 받은 버거 개수 추적
 	private Dictionary<GuestController, int> _guestReceivedBurgers = new Dictionary<GuestController, int>();
+	
+	// 손님별 주문 번호 추적 (게스트 ID → 주문 번호)
+	private Dictionary<int, int> _guestOrderNumbers = new Dictionary<int, int>();
+	
+	// 다음 주문 번호 (순차적으로 증가)
+	private int _nextOrderNumber = 1;
 
 	public List<WorkerController> Workers = new List<WorkerController>();
 	public List<Table> Tables => Owner?.Tables;
@@ -63,6 +70,7 @@ public class Counter : UnlockableBase
 
 	public Transform GuestSpawnPos;
 	public Transform BurgerPickupPos;
+	private GameObject _pickupGuestPool; // 픽업 큐 손님들을 관리하는 풀 게임오브젝트 (@PickupGuestPool)
 
 
 
@@ -88,7 +96,13 @@ public class Counter : UnlockableBase
 			{
 				_pickupQueuePoints = pickupWaypoints.GetPoints();
 			}
+		}
 		
+		// PickupGuestPool 게임오브젝트 생성 (GuestPool처럼 @ 접두사 사용)
+		_pickupGuestPool = GameObject.Find("@PickupGuestPool");
+		if (_pickupGuestPool == null)
+		{
+			_pickupGuestPool = new GameObject("@PickupGuestPool");
 		}
 
 		// 햄버거 인터랙션.
@@ -139,28 +153,168 @@ public class Counter : UnlockableBase
 			if (_queueGuests.Count == _queuePoints.Count)
 				continue;
 
-			GameObject go = GameManager.Instance.SpawnGuest();
-			go.transform.position = GuestSpawnPos.position;
-
-			Transform dest = _queuePoints.Last();
-
-			GuestController guest = go.GetComponent<GuestController>();
-			guest.CurrentDestQueueIndex = _queuePoints.Count - 1;
-			guest.GuestState = Define.EGuestState.Queuing;
-			guest.SetDestination(dest.position, () => 
-			{ 
-				guest.transform.rotation = dest.rotation;
-			}); 			
-
-			_queueGuests.Add(guest);
+			SpawnSingleGuest();
 		}
 	}
+	
+	/// <summary>
+	/// 손님 한 명을 스폰합니다.
+	/// </summary>
+	private void SpawnSingleGuest()
+	{
+		if (_queueGuests.Count >= _queuePoints.Count)
+			return;
+
+		GameObject go = GameManager.Instance.SpawnGuest();
+		go.transform.position = GuestSpawnPos.position;
+
+		Transform dest = _queuePoints.Last();
+
+		GuestController guest = go.GetComponent<GuestController>();
+		guest.CurrentDestQueueIndex = _queuePoints.Count - 1;
+		guest.GuestState = Define.EGuestState.Queuing;
+		guest.SetDestination(dest.position, () => 
+		{ 
+			guest.transform.rotation = dest.rotation;
+		}); 			
+
+		_queueGuests.Add(guest);
+	}
+	
+	/// <summary>
+	/// GuestPool에 손님이 10명 이하면 1명씩 생성합니다.
+	/// </summary>
+	public void CheckAndSpawnGuestIfNeeded()
+	{
+		// GuestPool 게임오브젝트 찾기
+		GameObject guestPool = GameObject.Find("@GuestPool");
+		if (guestPool == null)
+			return;
+		
+		// GuestPool의 자식 개수 확인 (비활성화된 손님들)
+		int guestPoolCount = guestPool.transform.childCount;
+		
+		// 10명 이하면 1명 생성
+		if (guestPoolCount < 10)
+		{
+			GameObject go = GameObject.Instantiate(GameManager.Instance.GuestPrefab);
+			go.transform.SetParent(guestPool.transform);
+			go.SetActive(false);
+			go.name = GameManager.Instance.GuestPrefab.name;
+		}
+	}
+	
+	/// <summary>
+	/// 실패로 인해 손님이 파괴된 후 즉시 새 손님을 스폰합니다.
+	/// </summary>
+	private IEnumerator CoSpawnGuestAfterFail()
+	{
+		// 짧은 딜레이 후 스폰 (손님이 완전히 사라진 후)
+		yield return new WaitForSeconds(0.5f);
+		
+		// 큐에 공간이 있으면 즉시 스폰
+		if (_queueGuests.Count < _queuePoints.Count)
+		{
+			SpawnSingleGuest();
+		}
+	}
+    /// <summary>
+    /// 첫 번째 손님 반환 (주문 큐 우선, 없으면 픽업 큐)
+    /// </summary>
     public GuestController GetFirstGuest()
     {
-        if (_queueGuests.Count > 0)
+        // 주문 큐에 손님이 있으면 첫 번째 손님 반환
+        GuestController orderGuest = GetFirstOrderQueueGuest();
+        if (orderGuest != null)
         {
-            return _queueGuests[0];
+            return orderGuest;
         }
+        // 주문 큐가 비어있으면 픽업 큐의 첫 번째 손님 반환
+        GuestController pickupGuest = GetFirstPickupQueueGuest();
+        if (pickupGuest != null)
+        {
+            return pickupGuest;
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// 특정 손님의 주문 개수를 반환합니다.
+    /// </summary>
+    public int GetGuestOrderCount(GuestController guest)
+    {
+        if (guest == null)
+            return 0;
+        
+        // 첫 번째 손님이고 _nextOrderBurgerCount가 있으면 그것을 반환
+        if (_queueGuests.Count > 0 && _queueGuests[0] == guest && _nextOrderBurgerCount > 0)
+        {
+            return _nextOrderBurgerCount;
+        }
+        
+        // 딕셔너리에서 확인
+        if (_guestOrderCounts.ContainsKey(guest))
+        {
+            return _guestOrderCounts[guest];
+        }
+        
+        return 0;
+    }
+    
+    /// <summary>
+    /// 주문 번호로 손님을 찾습니다. (주문 번호 문자열에서 숫자 추출)
+    /// </summary>
+    public GuestController GetGuestByOrderNumber(string orderNumberText)
+    {
+        if (string.IsNullOrEmpty(orderNumberText))
+            return null;
+        
+        // "주문 #1" 형식에서 숫자 추출
+        int orderNumber = 0;
+        if (orderNumberText.StartsWith("주문 #"))
+        {
+            string numberStr = orderNumberText.Substring("주문 #".Length);
+            if (!int.TryParse(numberStr, out orderNumber))
+            {
+                return null;
+            }
+        }
+        else if (int.TryParse(orderNumberText, out orderNumber))
+        {
+            // 숫자만 있는 경우
+        }
+        else
+        {
+            return null;
+        }
+        
+        // _guestOrderNumbers 딕셔너리에서 주문 번호에 해당하는 게스트 ID 찾기
+        foreach (var kvp in _guestOrderNumbers)
+        {
+            if (kvp.Value == orderNumber)
+            {
+                int guestId = kvp.Key;
+                
+                // _queueGuests에서 찾기
+                foreach (var guest in _queueGuests)
+                {
+                    if (guest != null && guest.GetInstanceID() == guestId)
+                    {
+                        return guest;
+                    }
+                }
+                
+                // _pickupQueueGuests에서 찾기
+                foreach (var guest in _pickupQueueGuests)
+                {
+                    if (guest != null && guest.GetInstanceID() == guestId)
+                    {
+                        return guest;
+                    }
+                }
+            }
+        }
+        
         return null;
     }
 
@@ -180,15 +334,26 @@ public class Counter : UnlockableBase
 		}
 	}
 
-	#region GuestAI
+	#region GuestAI - Order Queue (주문 대기 큐)
+	/// <summary>
+	/// 주문 대기 큐 관리 (줄서기 및 이동 처리)
+	/// </summary>
 	public void UpdateGuestQueueAI()
+	{
+		UpdateOrderQueueMovement();
+	}
+	
+	/// <summary>
+	/// 주문 대기 큐의 손님들 이동 처리
+	/// </summary>
+	private void UpdateOrderQueueMovement()
 	{
 		// 줄서기 관리.
 		for (int i = 0; i < _queueGuests.Count; i++)
 		{
 			int guestIndex = i;
 			GuestController guest = _queueGuests[guestIndex];
-			if (guest.HasArrivedAtDestination == false)
+			if (guest == null || guest.HasArrivedAtDestination == false)
 				continue;
 
 			// 다음 지점으로 이동.
@@ -203,6 +368,40 @@ public class Counter : UnlockableBase
 				});
 			}
 		}
+	}
+	
+	/// <summary>
+	/// 주문 대기 큐에 손님 추가
+	/// </summary>
+	public void AddGuestToOrderQueue(GuestController guest)
+	{
+		if (guest == null || _queueGuests.Contains(guest))
+			return;
+		
+		_queueGuests.Add(guest);
+	}
+	
+	/// <summary>
+	/// 주문 대기 큐에서 손님 제거
+	/// </summary>
+	public void RemoveGuestFromOrderQueue(GuestController guest)
+	{
+		if (guest == null)
+			return;
+		
+		_queueGuests.Remove(guest);
+	}
+	
+	/// <summary>
+	/// 주문 대기 큐의 첫 번째 손님 반환
+	/// </summary>
+	public GuestController GetFirstOrderQueueGuest()
+	{
+		if (_queueGuests.Count > 0)
+		{
+			return _queueGuests[0];
+		}
+		return null;
 	}
 
 	private void UpdateGuestOrderAI()
@@ -237,18 +436,27 @@ public class Counter : UnlockableBase
 	}
 	#endregion
 	
-	#region PickupQueueAI
+	#region PickupQueueAI - Pickup Queue (버거 픽업 큐)
 	/// <summary>
 	/// 버거 픽업 큐 관리 (주문 완료 후 버거를 받으러 오는 손님들)
 	/// </summary>
 	private void UpdatePickupQueueAI()
 	{
-		// 줄서기 관리 및 버거 가져가기 처리
+		UpdatePickupQueueMovement();
+		UpdatePickupQueueInteraction();
+	}
+	
+	/// <summary>
+	/// 버거 픽업 큐의 손님들 이동 처리
+	/// </summary>
+	private void UpdatePickupQueueMovement()
+	{
+		// 줄서기 관리
 		for (int i = 0; i < _pickupQueueGuests.Count; i++)
 		{
 			int guestIndex = i;
 			GuestController guest = _pickupQueueGuests[guestIndex];
-			if (guest.HasArrivedAtDestination == false)
+			if (guest == null || guest.HasArrivedAtDestination == false)
 				continue;
 
 			// 다음 지점으로 이동.
@@ -262,13 +470,57 @@ public class Counter : UnlockableBase
 					guest.transform.rotation = dest.rotation;
 				});
 			}
-			
-			// 맨 앞 손님(인덱스 0)이 도착했고, 버거를 가져갈 수 있는 상태인지 확인
-			if (guestIndex == 0 && guest.CurrentDestQueueIndex == 0 && guest.HasArrivedAtDestination)
+		}
+	}
+	
+	/// <summary>
+	/// 버거 픽업 큐의 손님들과 버거 상호작용 처리
+	/// </summary>
+	private void UpdatePickupQueueInteraction()
+	{
+		// 맨 앞 손님(인덱스 0)이 도착했고, 버거를 가져갈 수 있는 상태인지 확인
+		if (_pickupQueueGuests.Count > 0)
+		{
+			GuestController firstGuest = _pickupQueueGuests[0];
+			if (firstGuest != null && firstGuest.CurrentDestQueueIndex == 0 && firstGuest.HasArrivedAtDestination)
 			{
-				TryGiveBurgerToGuest(guest);
+				TryGiveBurgerToGuest(firstGuest);
 			}
 		}
+	}
+	
+	/// <summary>
+	/// 버거 픽업 큐에 손님 추가
+	/// </summary>
+	public void AddGuestToPickupQueue(GuestController guest)
+	{
+		if (guest == null || _pickupQueueGuests.Contains(guest))
+			return;
+		
+		_pickupQueueGuests.Add(guest);
+	}
+	
+	/// <summary>
+	/// 버거 픽업 큐에서 손님 제거
+	/// </summary>
+	public void RemoveGuestFromPickupQueue(GuestController guest)
+	{
+		if (guest == null)
+			return;
+		
+		_pickupQueueGuests.Remove(guest);
+	}
+	
+	/// <summary>
+	/// 버거 픽업 큐의 첫 번째 손님 반환
+	/// </summary>
+	public GuestController GetFirstPickupQueueGuest()
+	{
+		if (_pickupQueueGuests.Count > 0)
+		{
+			return _pickupQueueGuests[0];
+		}
+		return null;
 	}
 	
 	/// <summary>
@@ -289,13 +541,36 @@ public class Counter : UnlockableBase
 		// 아직 받지 못한 버거가 있고, BurgerPile에 버거가 있으면 가져가기
 		if (receivedCount < orderCount && _burgerPile.ObjectCount > 0)
 		{
-			_burgerPile.PileToTray(guest.Tray);
-			_guestReceivedBurgers[guest] = receivedCount + 1;
-			
-			// 모든 버거를 받았으면 테이블로 보내기
-			if (_guestReceivedBurgers[guest] >= orderCount)
+			// 손님의 주문 번호 가져오기
+			int guestId = guest.GetInstanceID();
+			string guestOrderNumber = null;
+			if (_guestOrderNumbers.ContainsKey(guestId))
 			{
-				SendGuestToTable(guest);
+				guestOrderNumber = $"주문 #{_guestOrderNumbers[guestId]}";
+			}
+			
+			// 주문 번호가 일치하는 버거만 가져가기
+			bool burgerTaken = false;
+			if (!string.IsNullOrEmpty(guestOrderNumber))
+			{
+				burgerTaken = _burgerPile.PileToTrayWithOrderNumber(guest.Tray, guestOrderNumber);
+			}
+			else
+			{
+				// 주문 번호가 없으면 기존 방식으로 폴백
+				_burgerPile.PileToTray(guest.Tray);
+				burgerTaken = true;
+			}
+			
+			if (burgerTaken)
+			{
+				_guestReceivedBurgers[guest] = receivedCount + 1;
+				
+				// 모든 버거를 받았으면 테이블로 보내기
+				if (_guestReceivedBurgers[guest] >= orderCount)
+				{
+					SendGuestToTable(guest);
+				}
 			}
 		}
 	}
@@ -335,11 +610,26 @@ public class Counter : UnlockableBase
 
 	private void OnOrderComplete(Define.BurgerRecipe recipe)
 	{
-		// Grill에 주문 전달
+		// Grill에 주문 전달 (손님 정보 포함)
 		Grill grill = FindObjectOfType<Grill>();
-		if (grill != null)
+		if (grill != null && _queueGuests.Count > 0)
 		{
-			grill.AddOrder(recipe);
+			GuestController firstGuest = _queueGuests[0];
+			int guestId = firstGuest.GetInstanceID();
+			
+			// 게스트별 주문 번호 할당 (처음 주문하는 경우에만 새 번호 부여)
+			if (!_guestOrderNumbers.ContainsKey(guestId))
+			{
+				_guestOrderNumbers[guestId] = _nextOrderNumber;
+				_nextOrderNumber++;
+			}
+			
+			int orderNumber = _guestOrderNumbers[guestId];
+			string orderNumberText = $"주문 #{orderNumber}";
+			grill.AddOrder(recipe, firstGuest, orderNumberText);
+			
+			// GuestController에 주문 번호 표시 업데이트
+			firstGuest.SetOrderNumberDisplay(orderNumber);
 		}
 		
 		// 첫 번째 손님의 남은 주문 개수 감소
@@ -348,12 +638,16 @@ public class Counter : UnlockableBase
 			_remainingOrderCount--;
 			GuestController firstGuest = _queueGuests[0];
 			
+			Debug.Log($"[Counter] OnOrderComplete: 남은 주문 개수={_remainingOrderCount}, 총 주문 개수={_nextOrderBurgerCount}, 손님={firstGuest?.name}");
+			
 			// 남은 주문 개수 업데이트 (UI 표시용)
 			firstGuest.OrderCount = _remainingOrderCount;
 			
 			// 모든 주문이 완료되었으면 BurgerPickupPos 큐로 이동
 			if (_remainingOrderCount == 0)
 			{
+				Debug.Log($"[Counter] OnOrderComplete: 모든 주문 완료! 손님을 픽업 큐로 이동합니다. 손님={firstGuest?.name}");
+				
 				// 손님별 주문 개수가 딕셔너리에 없으면 추가 (안전장치)
 				if (!_guestOrderCounts.ContainsKey(firstGuest))
 				{
@@ -364,6 +658,10 @@ public class Counter : UnlockableBase
 				MoveGuestToPickupQueue(firstGuest);
 			}
 		}
+		else
+		{
+			Debug.LogWarning($"[Counter] OnOrderComplete: 조건 불만족. _queueGuests.Count={_queueGuests.Count}, _remainingOrderCount={_remainingOrderCount}");
+		}
 	}
 	
 	/// <summary>
@@ -371,18 +669,38 @@ public class Counter : UnlockableBase
 	/// </summary>
 	private void MoveGuestToPickupQueue(GuestController guest)
 	{
-		if (guest == null || !_queueGuests.Contains(guest))
+		if (guest == null)
+		{
+			Debug.LogWarning($"[Counter] MoveGuestToPickupQueue: 손님이 null입니다.");
 			return;
+		}
+		
+		// 주문 큐에 있는지 확인
+		if (!_queueGuests.Contains(guest))
+		{
+			Debug.LogWarning($"[Counter] MoveGuestToPickupQueue: 손님이 _queueGuests에 없습니다. guest={guest?.name}, _queueGuests.Count={_queueGuests.Count}");
+			return;
+		}
 		
 		// 주문 개수 저장 (리셋 전에)
 		int orderCount = _nextOrderBurgerCount > 0 ? _nextOrderBurgerCount : (_guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 1);
 		
+		Debug.Log($"[Counter] MoveGuestToPickupQueue: 시작. guest={guest?.name}, orderCount={orderCount}, _pickupQueuePoints.Count={_pickupQueuePoints.Count}");
+		
 		// 주문 큐에서 제거
-		_queueGuests.Remove(guest);
+		RemoveGuestFromOrderQueue(guest);
+		Debug.Log($"[Counter] MoveGuestToPickupQueue: 주문 큐에서 제거 완료. 남은 손님 수={_queueGuests.Count}");
 		
 		// 버거 픽업 큐에 추가
 		if (_pickupQueuePoints.Count > 0)
 		{
+			// 주문 완료 시 GuestPool에서 PickupGuestPool로 이동
+			if (_pickupGuestPool != null)
+			{
+				guest.transform.SetParent(_pickupGuestPool.transform);
+				Debug.Log($"[Counter] MoveGuestToPickupQueue: 손님을 PickupGuestPool로 이동. guest={guest?.name}");
+			}
+			
 			// 픽업 큐의 마지막 위치로 이동 (기존 손님들 뒤에 서기)
 			Transform dest = _pickupQueuePoints.Last();
 			guest.CurrentDestQueueIndex = _pickupQueuePoints.Count - 1;
@@ -395,7 +713,8 @@ public class Counter : UnlockableBase
 			});
 			
 			// 픽업 큐에 추가 (목적지 설정 후)
-			_pickupQueueGuests.Add(guest);
+			AddGuestToPickupQueue(guest);
+			Debug.Log($"[Counter] MoveGuestToPickupQueue: 픽업 큐에 추가 완료. 총 손님 수={_pickupQueueGuests.Count}, dest={dest.position}, queueIndex={guest.CurrentDestQueueIndex}");
 			
 			// 손님별 주문 개수 확인 (안전장치)
 			if (!_guestOrderCounts.ContainsKey(guest))
@@ -403,8 +722,6 @@ public class Counter : UnlockableBase
 				_guestOrderCounts[guest] = orderCount;
 				_guestReceivedBurgers[guest] = 0;
 			}
-			
-			Debug.Log($"[Counter] MoveGuestToPickupQueue: 손님을 픽업 큐로 이동. dest={dest.position}, queueIndex={guest.CurrentDestQueueIndex}, queueCount={_pickupQueuePoints.Count}");
 		}
 		else
 		{
@@ -509,13 +826,36 @@ public class Counter : UnlockableBase
 					// 아직 받지 못한 버거가 있고, BurgerPile에 버거가 있으면 가져가기
 					if (receivedCount < orderCount && _burgerPile.ObjectCount > 0)
 					{
-						_burgerPile.PileToTray(guest.Tray);
-						_guestReceivedBurgers[guest] = receivedCount + 1;
-						
-						// 모든 버거를 받았으면 테이블로 보내기
-						if (_guestReceivedBurgers[guest] >= orderCount)
+						// 손님의 주문 번호 가져오기
+						int guestId = guest.GetInstanceID();
+						string guestOrderNumber = null;
+						if (_guestOrderNumbers.ContainsKey(guestId))
 						{
-							SendGuestToTable(guest);
+							guestOrderNumber = $"주문 #{_guestOrderNumbers[guestId]}";
+						}
+						
+						// 주문 번호가 일치하는 버거만 가져가기
+						bool burgerTaken = false;
+						if (!string.IsNullOrEmpty(guestOrderNumber))
+						{
+							burgerTaken = _burgerPile.PileToTrayWithOrderNumber(guest.Tray, guestOrderNumber);
+						}
+						else
+						{
+							// 주문 번호가 없으면 기존 방식으로 폴백
+							_burgerPile.PileToTray(guest.Tray);
+							burgerTaken = true;
+						}
+						
+						if (burgerTaken)
+						{
+							_guestReceivedBurgers[guest] = receivedCount + 1;
+							
+							// 모든 버거를 받았으면 테이블로 보내기
+							if (_guestReceivedBurgers[guest] >= orderCount)
+							{
+								SendGuestToTable(guest);
+							}
 						}
 					}
 				}
@@ -586,6 +926,14 @@ public class Counter : UnlockableBase
 		{
 			_guestReceivedBurgers.Remove(guest);
 		}
+		
+		// 주문 번호도 제거
+		int guestId = guest.GetInstanceID();
+		if (_guestOrderNumbers.ContainsKey(guestId))
+		{
+			_guestOrderNumbers.Remove(guestId);
+			guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
+		}
 	}
 	
 	/// <summary>
@@ -645,6 +993,14 @@ public class Counter : UnlockableBase
 				{
 					_guestReceivedBurgers.Remove(guest);
 				}
+				
+				// 주문 번호도 제거
+				int guestId = guest.GetInstanceID();
+				if (_guestOrderNumbers.ContainsKey(guestId))
+				{
+					_guestOrderNumbers.Remove(guestId);
+					guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
+				}
 			}
 		}
 	}
@@ -669,40 +1025,70 @@ public class Counter : UnlockableBase
 	/// </summary>
 	public void ProcessOrderComplete(GuestController guest, bool failOrder)
 	{
-		if (guest == null || !_queueGuests.Contains(guest))
+		if (guest == null)
+			return;
+		
+		// _queueGuests 또는 _pickupQueueGuests에 있는지 확인
+		bool inQueueGuests = _queueGuests.Contains(guest);
+		bool inPickupQueueGuests = _pickupQueueGuests.Contains(guest);
+		
+		if (!inQueueGuests && !inPickupQueueGuests)
 			return;
 		
 		if (failOrder)
 		{
-			// 실패 시 스폰 위치로 돌아가기
+			// 3회 실패 시 leavepos로 이동 후 삭제
+			// _pickupQueueGuests에 있는 손님은 이미 PickupGuestPool에 있음
+			// 일반 손님은 GuestPool에 있음
+			
+			// 실패 시 스폰 위치(leavepos)로 돌아가기
 			guest.SetDestination(GuestSpawnPos.position, () =>
 			{
-				GameManager.Instance.DespawnGuest(guest.gameObject);
+				// 도착 후 큐에서 제거
+				if (_queueGuests.Contains(guest))
+				{
+					_queueGuests.Remove(guest);
+				}
+				if (_pickupQueueGuests.Contains(guest))
+				{
+					_pickupQueueGuests.Remove(guest);
+				}
+				
+				// 딕셔너리에서도 제거
+				if (_guestOrderCounts.ContainsKey(guest))
+				{
+					_guestOrderCounts.Remove(guest);
+				}
+				if (_guestReceivedBurgers.ContainsKey(guest))
+				{
+					_guestReceivedBurgers.Remove(guest);
+				}
+				
+				// 주문 번호도 제거
+				int guestId = guest.GetInstanceID();
+				if (_guestOrderNumbers.ContainsKey(guestId))
+				{
+					_guestOrderNumbers.Remove(guestId);
+					guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
+				}
+				
+				// leavepos 도착 후 삭제
+				if (guest != null && guest.gameObject != null)
+				{
+					Destroy(guest.gameObject);
+				}
 			});
 			guest.GuestState = Define.EGuestState.Leaving;
 			
 			// 주문 버블 비활성화
 			guest.OrderCount = 0;
 			
-			// 큐에서 제거
-			_queueGuests.Remove(guest);
-			
-			// 픽업 큐에서도 제거
-			_pickupQueueGuests.Remove(guest);
-			
-			// 딕셔너리에서도 제거
-			if (_guestOrderCounts.ContainsKey(guest))
+			// 주문 리셋 (첫 번째 손님이면)
+			if (inQueueGuests && _queueGuests.Count > 0 && _queueGuests[0] == guest)
 			{
-				_guestOrderCounts.Remove(guest);
+				_nextOrderBurgerCount = 0;
+				_remainingOrderCount = 0;
 			}
-			if (_guestReceivedBurgers.ContainsKey(guest))
-			{
-				_guestReceivedBurgers.Remove(guest);
-			}
-			
-			// 주문 리셋
-			_nextOrderBurgerCount = 0;
-			_remainingOrderCount = 0;
 		}
 		// 성공 시는 OnGuestInteraction에서 처리하므로 여기서는 처리하지 않음
 	}

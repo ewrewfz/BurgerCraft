@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Á¶¸® ½ÇÆĞ ÆË¾÷: 3È¸ ½ÇÆĞ ½Ã ¼Õ´ÔÀÌ ¶°³ª´Â ´ë½Å ¼ÒÁö±İ¿¡¼­ Â÷°¨.
+/// ì¡°ë¦¬ ì‹¤íŒ¨ íŒì—…: 3íšŒ ì‹¤íŒ¨ ì‹œ ì†ë‹˜ì´ ë– ë‚˜ë„ë¡ ì²˜ë¦¬í•˜ëŠ” íŒì—….
 /// </summary>
 public class UI_CookingFailPopup : MonoBehaviour
 {
@@ -17,6 +17,8 @@ public class UI_CookingFailPopup : MonoBehaviour
 
     private int _currentFailCount = 0;
     private const int MAX_FAIL_COUNT = 3;
+    
+    private GuestController _associatedGuest; // ì´ íŒì—…ê³¼ ì—°ê²°ëœ ì†ë‹˜
 
     public System.Action OnNextButtonClicked;
     public System.Action OnMaxFailReached;
@@ -35,16 +37,35 @@ public class UI_CookingFailPopup : MonoBehaviour
     public void Show()
     {
         gameObject.SetActive(true);
+        
+        // ì†ë‹˜ì´ ì—°ê²°ë˜ì–´ ìˆìœ¼ë©´ ì†ë‹˜ì˜ FailCountë¥¼ ê°€ì ¸ì™€ì„œ ë™ê¸°í™”
+        if (_associatedGuest != null)
+        {
+            _currentFailCount = _associatedGuest.FailCount;
+        }
+        
         UpdateFailImages();
+    }
+    
+    /// <summary>
+    /// ì´ íŒì—…ê³¼ ì—°ê²°ëœ ì†ë‹˜ì„ ì„¤ì •í•©ë‹ˆë‹¤.
+    /// </summary>
+    public void SetAssociatedGuest(GuestController guest)
+    {
+        _associatedGuest = guest;
+        if (guest != null)
+        {
+            _currentFailCount = guest.FailCount;
+        }
     }
 
     public void Hide()
     {
-        // ÀÌ¹Ì ºñÈ°¼ºÈ­µÇ¾î ÀÖÀ¸¸é Ç®¿¡ ÀÌ¹Ì ¹İÈ¯µÈ »óÅÂ
+        // ì´ë¯¸ ë¹„í™œì„±í™”ë˜ì–´ ìˆìœ¼ë©´ í’€ì— ì´ë¯¸ ë°˜í™˜ëœ ìƒíƒœ
         if (!gameObject.activeSelf)
             return;
 
-        // PoolManager¿¡ ¹İÈ¯ (³»ºÎ¿¡¼­ ºñÈ°¼ºÈ­ Ã³¸®)
+        // PoolManagerì— ë°˜í™˜ (ë‹¤ìŒì— ì¬í™œì„±í™” ì²˜ë¦¬)
         if (PoolManager.Instance != null)
         {
             PoolManager.Instance.Push(gameObject);
@@ -53,97 +74,120 @@ public class UI_CookingFailPopup : MonoBehaviour
 
     public void AddFailCount()
     {
-        if (_currentFailCount >= MAX_FAIL_COUNT)
-            return;
+        // ì—°ê²°ëœ ì†ë‹˜ì˜ FailCount ë¨¼ì € ì¦ê°€
+        if (_associatedGuest != null)
+        {
+            _associatedGuest.AddFailCount();
+            // ì†ë‹˜ì˜ FailCountë¡œ ë™ê¸°í™”
+            _currentFailCount = _associatedGuest.FailCount;
+        }
+        else
+        {
+            // ì†ë‹˜ì´ ì—†ìœ¼ë©´ ë¡œì»¬ ì¹´ìš´íŠ¸ë§Œ ì¦ê°€
+            if (_currentFailCount >= MAX_FAIL_COUNT)
+                return;
+            _currentFailCount++;
+        }
 
-        _currentFailCount++;
-        UpdateFailImages();
-
+        // FailCountê°€ ìµœëŒ€ì¹˜ë¥¼ ë„˜ìœ¼ë©´ ë” ì´ìƒ ì§„í–‰í•˜ì§€ ì•ŠìŒ
         if (_currentFailCount >= MAX_FAIL_COUNT)
         {
+            _currentFailCount = MAX_FAIL_COUNT;
+            UpdateFailImages();
+            
             if (GameManager.Instance != null)
             {
                 Utils.ApplyMoneyChange(-100, 2f, clampZero: true, animate: true);
             }
-            // Äİ¹é ¸ÕÀú È£Ãâ (Hide Àü¿¡)
+            // ìµœëŒ€ ì‹¤íŒ¨ í˜¸ì¶œ (Hide ì „ì—)
             OnMaxFailReached?.Invoke();
-            // ±× ´ÙÀ½ Ç®¿¡ ¹İÈ¯
+            // íŒì—… í’€ì— ë°˜í™˜
             Hide();
             return;
         }
+        
+        UpdateFailImages();
     }
-
-
 
     private void UpdateFailImages()
     {
-        //if (_failImage1 != null) _failImage1.SetActive(_currentFailCount >= 1);
-        //if (_failImage2 != null) _failImage2.SetActive(_currentFailCount >= 2);
-        //if (_failImage3 != null) _failImage3.SetActive(_currentFailCount >= 3);
+        // ì†ë‹˜ì´ ì—°ê²°ë˜ì–´ ìˆìœ¼ë©´ ì†ë‹˜ì˜ FailCountë¡œ ë™ê¸°í™”
+        if (_associatedGuest != null)
+        {
+            _currentFailCount = _associatedGuest.FailCount;
+        }
 
-        // Ã¹ ¹øÂ° ½ÇÆĞ ÀÌ¹ÌÁö
+        // ì²« ë²ˆì§¸ ì‹¤íŒ¨ ì´ë¯¸ì§€
         if (_failImage1 != null)
         {
             bool shouldBeActive = _currentFailCount >= 1;
-            if (shouldBeActive && !_failImage1.activeSelf)
+            if (shouldBeActive)
             {
-                _failImage1.SetActive(true);
-                // DOTween ¾Ö´Ï¸ŞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
-                RectTransform rectTransform = _failImage1.GetComponent<RectTransform>();
-                if (rectTransform != null)
+                if (!_failImage1.activeSelf)
                 {
-                    rectTransform.localScale = Vector3.zero;
-                    rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    _failImage1.SetActive(true);
+                    // DOTween ì• ë‹ˆë©”ì´ì…˜: ìŠ¤ì¼€ì¼ì„ 0ì—ì„œ 1ë¡œ
+                    RectTransform rectTransform = _failImage1.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        rectTransform.localScale = Vector3.zero;
+                        rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    }
                 }
             }
-            else if (!shouldBeActive)
+            else
             {
                 _failImage1.SetActive(false);
             }
         }
 
-        // µÎ ¹øÂ° ½ÇÆĞ ÀÌ¹ÌÁö
+        // ë‘ ë²ˆì§¸ ì‹¤íŒ¨ ì´ë¯¸ì§€
         if (_failImage2 != null)
         {
             bool shouldBeActive = _currentFailCount >= 2;
-            if (shouldBeActive && !_failImage2.activeSelf)
+            if (shouldBeActive)
             {
-                _failImage2.SetActive(true);
-                // DOTween ¾Ö´Ï¸ŞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
-                RectTransform rectTransform = _failImage2.GetComponent<RectTransform>();
-                if (rectTransform != null)
+                if (!_failImage2.activeSelf)
                 {
-                    rectTransform.localScale = Vector3.zero;
-                    rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    _failImage2.SetActive(true);
+                    // DOTween ì• ë‹ˆë©”ì´ì…˜: ìŠ¤ì¼€ì¼ì„ 0ì—ì„œ 1ë¡œ
+                    RectTransform rectTransform = _failImage2.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        rectTransform.localScale = Vector3.zero;
+                        rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    }
                 }
             }
-            else if (!shouldBeActive)
+            else
             {
                 _failImage2.SetActive(false);
             }
         }
 
-        // ¼¼ ¹øÂ° ½ÇÆĞ ÀÌ¹ÌÁö
+        // ì„¸ ë²ˆì§¸ ì‹¤íŒ¨ ì´ë¯¸ì§€
         if (_failImage3 != null)
         {
             bool shouldBeActive = _currentFailCount >= 3;
-            if (shouldBeActive && !_failImage3.activeSelf)
+            if (shouldBeActive)
             {
-                _failImage3.SetActive(true);
-                // DOTween ¾Ö´Ï¸ŞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
-                RectTransform rectTransform = _failImage3.GetComponent<RectTransform>();
-                if (rectTransform != null)
+                if (!_failImage3.activeSelf)
                 {
-                    rectTransform.localScale = Vector3.zero;
-                    rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    _failImage3.SetActive(true);
+                    // DOTween ì• ë‹ˆë©”ì´ì…˜: ìŠ¤ì¼€ì¼ì„ 0ì—ì„œ 1ë¡œ
+                    RectTransform rectTransform = _failImage3.GetComponent<RectTransform>();
+                    if (rectTransform != null)
+                    {
+                        rectTransform.localScale = Vector3.zero;
+                        rectTransform.DOScale(Vector3.one, 0.3f).SetEase(DG.Tweening.Ease.OutBack);
+                    }
                 }
             }
-            else if (!shouldBeActive)
+            else
             {
                 _failImage3.SetActive(false);
             }
         }
-
     }
 
     public void ResetFailCount()
@@ -154,6 +198,13 @@ public class UI_CookingFailPopup : MonoBehaviour
     private void ResetFailImages()
     {
         _currentFailCount = 0;
+        
+        // ì—°ê²°ëœ ì†ë‹˜ì˜ FailCountë„ ì´ˆê¸°í™”
+        if (_associatedGuest != null)
+        {
+            _associatedGuest.ResetFailCount();
+        }
+        
         if (_failImage1 != null) _failImage1.SetActive(false);
         if (_failImage2 != null) _failImage2.SetActive(false);
         if (_failImage3 != null) _failImage3.SetActive(false);

@@ -14,12 +14,15 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
     [SerializeField] private TextMeshProUGUI _priceText;
     [SerializeField] private TextMeshProUGUI _tipText;
     [SerializeField] private TextMeshProUGUI _totalText;
+    [SerializeField] private TextMeshProUGUI _orderNumberText; // 주문 번호 표시용
     
     [Header("Outline")]
     [SerializeField] private Image _receiptImage; // Receipt 프리팹의 Image 컴포넌트
 
     private Define.BurgerRecipe _recipe;
     public Define.BurgerRecipe Recipe => _recipe;
+    private string _orderNumber;
+    public string OrderNumber => _orderNumber;
     
     private Outline _outline;
     
@@ -66,9 +69,10 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
         OnReceiptClicked?.Invoke(this);
     }
 
-    public void Init(Define.BurgerRecipe recipe)
+    public void Init(Define.BurgerRecipe recipe, string orderNumber = null)
     {
         _recipe = recipe;
+        _orderNumber = orderNumber;
         UpdateReceiptText();
     }
     
@@ -115,6 +119,12 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
         if (_priceText != null) _priceText.text = $"{basePrice}원";
         if (_tipText != null) _tipText.text = $"{tip}원";
         if (_totalText != null) _totalText.text = $"{total}원";
+        
+        // 주문 번호 표시
+        if (_orderNumberText != null)
+        {
+            _orderNumberText.text = !string.IsNullOrEmpty(_orderNumber) ? _orderNumber : "";
+        }
     }
 
     private string GetReceiptText(Define.BurgerRecipe recipe)

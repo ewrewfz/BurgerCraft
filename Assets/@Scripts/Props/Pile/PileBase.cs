@@ -190,7 +190,7 @@ public class PileBase : MonoBehaviour
     protected Stack<GameObject> _objects = new Stack<GameObject>();
 
     public int ObjectCount => _objects.Count;
-    private void AddToPile(GameObject go, bool jump = false)
+    protected void AddToPile(GameObject go, bool jump = false)
     {
         // 스택에 추가한다.
         _objects.Push(go);

@@ -26,6 +26,18 @@ public class GuestController : StickmanController
     // 실패 카운트 (3회 실패 시 떠남)
     private int _failCount = 0;
     public int FailCount => _failCount;
+    
+    // 인스펙터 표시용: 본인의 고유 주문 번호
+    [SerializeField] private int _orderNumberDisplay = 0;
+    public int OrderNumberDisplay => _orderNumberDisplay;
+    
+    /// <summary>
+    /// 주문 번호를 설정합니다 (인스펙터 표시용)
+    /// </summary>
+    public void SetOrderNumberDisplay(int orderNumber)
+    {
+        _orderNumberDisplay = orderNumber;
+    }
 
     protected override void Awake()
     {

@@ -16,10 +16,10 @@ public class UI_FailPopup : MonoBehaviour
     private int _currentFailCount = 0;
     private const int MAX_FAIL_COUNT = 3;
 
-    private GuestController _associatedGuest; // ÀÌ ÆË¾÷°ú ¿¬°áµÈ ¼Õ´Ô
+    private GuestController _associatedGuest; // ï¿½ï¿½ ï¿½Ë¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Õ´ï¿½
 
-    public Action OnAllFailsReached; // 3È¸ ½ÇÆÐ ½Ã È£ÃâµÉ ÄÝ¹é
-    public Action OnNextButtonClicked; // ´ÙÀ½ ´Ü°è ¹öÆ° Å¬¸¯ ½Ã È£ÃâµÉ ÄÝ¹é (ÁÖ¹® ÆË¾÷À» ´Ù½Ã ¿­±â À§ÇÑ)
+    public Action OnAllFailsReached; // 3È¸ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ È£ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½
+    public Action OnNextButtonClicked; // ï¿½ï¿½ï¿½ï¿½ ï¿½Ü°ï¿½ ï¿½ï¿½Æ° Å¬ï¿½ï¿½ ï¿½ï¿½ È£ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½ (ï¿½Ö¹ï¿½ ï¿½Ë¾ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
 
     private void Awake()
     {
@@ -29,7 +29,7 @@ public class UI_FailPopup : MonoBehaviour
             _nextLevelButton.onClick.AddListener(OnNextLevelButtonClick);
         }
 
-        // ÃÊ±â »óÅÂ: ¸ðµç ÀÌ¹ÌÁö ºñÈ°¼ºÈ­
+        // ï¿½Ê±ï¿½ ï¿½ï¿½ï¿½ï¿½: ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ ï¿½ï¿½È°ï¿½ï¿½È­
         ResetFailImages();
     }
 
@@ -47,7 +47,7 @@ public class UI_FailPopup : MonoBehaviour
     {
         gameObject.SetActive(true);
 
-        // ¾Ö´Ï¸ÞÀÌ¼Ç
+        // ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½
         RectTransform rectTransform = GetComponent<RectTransform>();
         if (rectTransform != null)
         {
@@ -65,7 +65,7 @@ public class UI_FailPopup : MonoBehaviour
                 .OnComplete(() =>
                 {
                     gameObject.SetActive(false);
-                    // PoolManager¿¡ ¹ÝÈ¯
+                    // PoolManagerï¿½ï¿½ ï¿½ï¿½È¯
                     if (PoolManager.Instance != null)
                     {
                         PoolManager.Instance.Push(gameObject);
@@ -75,7 +75,7 @@ public class UI_FailPopup : MonoBehaviour
         else
         {
             gameObject.SetActive(false);
-            // PoolManager¿¡ ¹ÝÈ¯
+            // PoolManagerï¿½ï¿½ ï¿½ï¿½È¯
             if (PoolManager.Instance != null)
             {
                 PoolManager.Instance.Push(gameObject);
@@ -84,7 +84,7 @@ public class UI_FailPopup : MonoBehaviour
     }
 
     /// <summary>
-    /// ÀÌ ÆË¾÷°ú ¿¬°áµÈ ¼Õ´ÔÀ» ¼³Á¤ÇÕ´Ï´Ù.
+    /// ï¿½ï¿½ ï¿½Ë¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Õ´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
     /// </summary>
     public void SetAssociatedGuest(GuestController guest)
     {
@@ -97,7 +97,7 @@ public class UI_FailPopup : MonoBehaviour
     }
 
     /// <summary>
-    /// ½ÇÆÐ Ä«¿îÆ®¸¦ Áõ°¡½ÃÅ°°í ÇØ´ç ÀÌ¹ÌÁö¸¦ È°¼ºÈ­ÇÕ´Ï´Ù.
+    /// ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å°ï¿½ï¿½ ï¿½Ø´ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ È°ï¿½ï¿½È­ï¿½Õ´Ï´ï¿½.
     /// </summary>
     public void AddFailCount()
     {
@@ -108,16 +108,16 @@ public class UI_FailPopup : MonoBehaviour
 
         _currentFailCount++;
 
-        // ¿¬°áµÈ ¼Õ´ÔÀÇ ½ÇÆÐ Ä«¿îÆ®µµ Áõ°¡
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Õ´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         if (_associatedGuest != null)
         {
             _associatedGuest.AddFailCount();
         }
 
-        // ÇØ´ç ½ÇÆÐ ÀÌ¹ÌÁö È°¼ºÈ­
+        // ï¿½Ø´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ È°ï¿½ï¿½È­
         UpdateFailImages();
 
-        // 3È¸ ½ÇÆÐ ½Ã ÄÝ¹é È£Ãâ
+        // 3È¸ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ý¹ï¿½ È£ï¿½ï¿½
         if (_currentFailCount >= MAX_FAIL_COUNT)
         {
             OnAllFailsReached?.Invoke();
@@ -126,14 +126,14 @@ public class UI_FailPopup : MonoBehaviour
 
     private void UpdateFailImages()
     {
-        // Ã¹ ¹øÂ° ½ÇÆÐ ÀÌ¹ÌÁö
+        // Ã¹ ï¿½ï¿½Â° ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½
         if (_failImage1 != null)
         {
             bool shouldBeActive = _currentFailCount >= 1;
             if (shouldBeActive && !_failImage1.activeSelf)
             {
                 _failImage1.SetActive(true);
-                // DOTween ¾Ö´Ï¸ÞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
+                // DOTween ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½
                 RectTransform rectTransform = _failImage1.GetComponent<RectTransform>();
                 if (rectTransform != null)
                 {
@@ -147,14 +147,14 @@ public class UI_FailPopup : MonoBehaviour
             }
         }
 
-        // µÎ ¹øÂ° ½ÇÆÐ ÀÌ¹ÌÁö
+        // ï¿½ï¿½ ï¿½ï¿½Â° ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½
         if (_failImage2 != null)
         {
             bool shouldBeActive = _currentFailCount >= 2;
             if (shouldBeActive && !_failImage2.activeSelf)
             {
                 _failImage2.SetActive(true);
-                // DOTween ¾Ö´Ï¸ÞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
+                // DOTween ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½
                 RectTransform rectTransform = _failImage2.GetComponent<RectTransform>();
                 if (rectTransform != null)
                 {
@@ -168,14 +168,14 @@ public class UI_FailPopup : MonoBehaviour
             }
         }
 
-        // ¼¼ ¹øÂ° ½ÇÆÐ ÀÌ¹ÌÁö
+        // ï¿½ï¿½ ï¿½ï¿½Â° ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½
         if (_failImage3 != null)
         {
             bool shouldBeActive = _currentFailCount >= 3;
             if (shouldBeActive && !_failImage3.activeSelf)
             {
                 _failImage3.SetActive(true);
-                // DOTween ¾Ö´Ï¸ÞÀÌ¼Ç: ½ºÄÉÀÏ 0¿¡¼­ 1·Î
+                // DOTween ï¿½Ö´Ï¸ï¿½ï¿½Ì¼ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½
                 RectTransform rectTransform = _failImage3.GetComponent<RectTransform>();
                 if (rectTransform != null)
                 {
@@ -191,7 +191,7 @@ public class UI_FailPopup : MonoBehaviour
     }
 
     /// <summary>
-    /// ÇöÀç ½ÇÆÐ Ä«¿îÆ®¸¦ ¹ÝÈ¯ÇÕ´Ï´Ù.
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½È¯ï¿½Õ´Ï´ï¿½.
     /// </summary>
     public int GetCurrentFailCount()
     {
@@ -199,7 +199,7 @@ public class UI_FailPopup : MonoBehaviour
     }
 
     /// <summary>   
-    /// ½ÇÆÐ Ä«¿îÆ®¸¦ ¸®¼ÂÇÕ´Ï´Ù.
+    /// ï¿½ï¿½ï¿½ï¿½ Ä«ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Õ´Ï´ï¿½.
     /// </summary>
     public void ResetFailCount()
     {
@@ -208,7 +208,7 @@ public class UI_FailPopup : MonoBehaviour
 
     private void OnNextLevelButtonClick()
     {
-        // 3È¸ ½ÇÆÐ°¡ ¾Æ´Ï¸é ÁÖ¹® ÆË¾÷À» ´Ù½Ã ¿­µµ·Ï ÄÝ¹é È£Ãâ
+        // 3È¸ ï¿½ï¿½ï¿½Ð°ï¿½ ï¿½Æ´Ï¸ï¿½ ï¿½Ö¹ï¿½ ï¿½Ë¾ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ý¹ï¿½ È£ï¿½ï¿½
         if (_currentFailCount < MAX_FAIL_COUNT)
         {
             OnNextButtonClicked?.Invoke();

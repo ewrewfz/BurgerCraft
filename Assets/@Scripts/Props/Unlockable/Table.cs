@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.AI;
 using static Define;
 
 // 1. 의자 2~4 (OK)
@@ -145,13 +146,30 @@ public class Table : UnlockableBase
 			// 돈 생성 (손님 수만큼)
 			SpawnMoneyRemaining = Guests.Count;
 
-			// 손님 퇴장.
+			// 손님 퇴장 (leavepos 도달 후 삭제)
 			foreach (GuestController guest in Guests)
 			{
+				// Counter의 PickupQueue에서도 제거
+				Counter counter = FindObjectOfType<Counter>();
+				if (counter != null)
+				{
+					counter.RemoveGuestFromPickupQueue(guest);
+				}
+				
 				guest.GuestState = EGuestState.Leaving;
 				guest.SetDestination(Define.GUEST_LEAVE_POS, () =>
 				{
-					GameManager.Instance.DespawnGuest(guest.gameObject);
+					// leavepos 도착 후 삭제
+					if (guest != null && guest.gameObject != null)
+					{
+						Destroy(guest.gameObject);
+					}
+					
+					// GuestPool에 손님이 10명 이하면 1명 생성
+					if (counter != null)
+					{
+						counter.CheckAndSpawnGuestIfNeeded();
+					}
 				});
 			}
 

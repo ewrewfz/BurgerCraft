@@ -34,6 +34,14 @@ public class Grill : UnlockableBase
 	// 인스펙터 표시용 (전달된 주문)
 	[SerializeField] private List<string> _deliveredOrderQueueDisplay = new List<string>();
 	
+	// 게스트 ID별 주문 매핑 (주문 삭제 시 정확한 손님의 주문만 제거하기 위해)
+	// Key: 게스트 인스턴스 ID, Value: 해당 게스트의 주문 리스트
+	private Dictionary<int, List<Define.BurgerRecipe>> _guestIdOrderMapping = new Dictionary<int, List<Define.BurgerRecipe>>();
+	
+	// 주문별 주문 번호 매핑 (레시피를 키로 사용하여 주문 번호 추적)
+	// Key: 게스트 인스턴스 ID, Value: 주문 번호 (문자열)
+	private Dictionary<int, string> _guestIdOrderNumberMapping = new Dictionary<int, string>();
+	
 	// 점멸 효과 관련
 	private Renderer _grillRenderer;
 	private Material _originalMaterial;
@@ -79,10 +87,11 @@ public class Grill : UnlockableBase
 	
 	/// <summary>
 	/// 현재 대기 중인 주문이 있는지 확인하고 점멸 효과 시작
+	/// _orderQueue 또는 _deliveredOrderQueue 중 하나라도 주문이 있으면 점멸
 	/// </summary>
 	private void CheckPendingOrdersAndBlink()
 	{
-		if (_orderQueue.Count > 0)
+		if (_orderQueue.Count > 0 || _deliveredOrderQueue.Count > 0)
 		{
 			StartBlinkEffect();
 		}
@@ -97,10 +106,36 @@ public class Grill : UnlockableBase
 	/// </summary>
 	public void AddOrder(Define.BurgerRecipe recipe)
 	{
+		AddOrder(recipe, null);
+	}
+	
+	/// <summary>
+	/// Counter에서 주문을 받아 큐에 추가합니다 (손님 정보 포함)
+	/// </summary>
+	public void AddOrder(Define.BurgerRecipe recipe, GuestController guest, string orderNumber = null)
+	{
 		if (recipe.Bread == Define.EBreadType.None)
 			return;
 		
 		_orderQueue.Add(recipe);
+		
+		// 게스트 ID별 주문 매핑에 추가
+		if (guest != null)
+		{
+			int guestId = guest.GetInstanceID();
+			if (!_guestIdOrderMapping.ContainsKey(guestId))
+			{
+				_guestIdOrderMapping[guestId] = new List<Define.BurgerRecipe>();
+			}
+			_guestIdOrderMapping[guestId].Add(recipe);
+			
+			// 주문 번호 저장 (게스트 ID별로 첫 주문일 때만 저장)
+			if (!string.IsNullOrEmpty(orderNumber) && !_guestIdOrderNumberMapping.ContainsKey(guestId))
+			{
+				_guestIdOrderNumberMapping[guestId] = orderNumber;
+			}
+		}
+		
 #if UNITY_EDITOR
 		// 인스펙터 표시용 업데이트
 		UpdateOrderQueueDisplay();
@@ -110,25 +145,58 @@ public class Grill : UnlockableBase
 	}
 	
 	/// <summary>
+	/// 게스트 ID로 주문 번호를 가져옵니다.
+	/// </summary>
+	public string GetOrderNumber(int guestId)
+	{
+		if (_guestIdOrderNumberMapping.ContainsKey(guestId))
+		{
+			return _guestIdOrderNumberMapping[guestId];
+		}
+		return null;
+	}
+	
+	/// <summary>
+	/// 레시피로 주문 번호를 가져옵니다.
+	/// </summary>
+	public string GetOrderNumberByRecipe(Define.BurgerRecipe recipe)
+	{
+		// _guestIdOrderMapping을 순회하여 해당 레시피를 찾고, 게스트 ID로 주문 번호 조회
+		foreach (var kvp in _guestIdOrderMapping)
+		{
+			foreach (var order in kvp.Value)
+			{
+				if (UI_OrderSystem.IsMatch(order, recipe))
+				{
+					return GetOrderNumber(kvp.Key);
+				}
+			}
+		}
+		return null;
+	}
+	
+	/// <summary>
 	/// 주문 큐에 주문이 있는지 확인합니다.
+	/// _orderQueue 또는 _deliveredOrderQueue 중 하나라도 주문이 있으면 true 반환
 	/// </summary>
 	public bool HasOrders()
 	{
-		return _orderQueue.Count > 0;
+		return _orderQueue.Count > 0 || _deliveredOrderQueue.Count > 0;
 	}
 	
 	/// <summary>
 	/// 주문 큐의 모든 주문을 가져옵니다 (CookingPopup에 전달)
-	/// 주의: 이 메서드는 주문을 큐에서 제거하지 않습니다. 실제로 처리된 주문만 RemoveOrder로 제거해야 합니다.
+	/// _orderQueue와 _deliveredOrderQueue의 모든 주문을 반환합니다.
+	/// _orderQueue의 주문은 _deliveredOrderQueue로 이동합니다.
 	/// </summary>
 	public List<Define.BurgerRecipe> GetOrders()
 	{
-		// 주문을 복사해서 반환 (원본 큐는 유지)
-		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_orderQueue);
+		// 반환할 주문 리스트 (기존 _deliveredOrderQueue의 주문 포함)
+		List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_deliveredOrderQueue);
 		
-		// 전달된 주문 큐 업데이트 (표시용)
-		// 이미 전달된 주문은 유지하고, 새로운 주문만 추가
-		foreach (var order in orders)
+		// _orderQueue의 주문을 _deliveredOrderQueue로 이동
+		// 이미 전달된 주문은 중복 추가하지 않음
+		foreach (var order in _orderQueue)
 		{
 			// 이미 전달된 주문 큐에 있는지 확인 (IsMatch로 비교)
 			bool alreadyDelivered = false;
@@ -141,26 +209,52 @@ public class Grill : UnlockableBase
 				}
 			}
 			
-			// 전달되지 않은 주문만 추가
+			// 전달되지 않은 주문만 _deliveredOrderQueue에 추가
 			if (!alreadyDelivered)
 			{
 				_deliveredOrderQueue.Add(order);
+				orders.Add(order);
 			}
 		}
 		
+		// _orderQueue에서 전달된 주문 제거
+		_orderQueue.Clear();
+		
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
 		UpdateDeliveredOrderQueueDisplay();
+#endif
 		
 		return orders;
 	}
 	
 	/// <summary>
 	/// 처리된 주문을 큐에서 제거합니다 (CookingPopup에서 완료된 주문에 대해 호출)
+	/// 같은 레시피가 여러 개 있어도 하나만 제거
 	/// </summary>
 	public void RemoveOrder(Define.BurgerRecipe recipe)
 	{
-		// struct이므로 직접 비교해서 제거
-		_orderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, recipe));
-		_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, recipe));
+		// _deliveredOrderQueue에서 첫 번째로 일치하는 주문 하나만 제거
+		for (int i = _deliveredOrderQueue.Count - 1; i >= 0; i--)
+		{
+			if (UI_OrderSystem.IsMatch(_deliveredOrderQueue[i], recipe))
+			{
+				_deliveredOrderQueue.RemoveAt(i);
+				break; // 하나만 제거하고 종료
+			}
+		}
+		
+		// _orderQueue에서도 첫 번째로 일치하는 주문 하나만 제거
+		for (int i = _orderQueue.Count - 1; i >= 0; i--)
+		{
+			if (UI_OrderSystem.IsMatch(_orderQueue[i], recipe))
+			{
+				_orderQueue.RemoveAt(i);
+				break; // 하나만 제거하고 종료
+			}
+		}
+		
 #if UNITY_EDITOR
 		// 인스펙터 표시용 업데이트
 		UpdateOrderQueueDisplay();
@@ -171,23 +265,178 @@ public class Grill : UnlockableBase
 	}
 	
 	/// <summary>
+	/// 주문 번호로 주문을 삭제합니다 (3회 실패 시 호출)
+	/// 주문 번호를 기준으로 해당 주문 번호의 모든 주문을 정확히 제거
+	/// </summary>
+	public void RemoveOrdersByOrderNumber(string orderNumber)
+	{
+		if (string.IsNullOrEmpty(orderNumber))
+			return;
+		
+		// 주문 번호에 해당하는 게스트 ID 찾기
+		List<int> guestIdsToRemove = new List<int>();
+		foreach (var kvp in _guestIdOrderNumberMapping)
+		{
+			if (kvp.Value == orderNumber)
+			{
+				guestIdsToRemove.Add(kvp.Key);
+			}
+		}
+		
+		if (guestIdsToRemove.Count == 0)
+		{
+			Debug.LogWarning($"[Grill] RemoveOrdersByOrderNumber: 주문 번호 '{orderNumber}'에 해당하는 주문을 찾을 수 없습니다.");
+			return;
+		}
+		
+		// 해당 주문 번호의 모든 게스트 주문 삭제
+		foreach (int guestId in guestIdsToRemove)
+		{
+			// _guestIdOrderMapping에서 해당 게스트의 주문 리스트 가져오기
+			if (!_guestIdOrderMapping.ContainsKey(guestId))
+				continue;
+			
+			List<Define.BurgerRecipe> guestOrders = _guestIdOrderMapping[guestId];
+			if (guestOrders == null || guestOrders.Count == 0)
+				continue;
+			
+			// 해당 게스트의 모든 주문을 _deliveredOrderQueue에서 제거
+			foreach (var order in guestOrders)
+			{
+				_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
+			}
+			
+			// _orderQueue에서도 제거
+			if (_orderQueue.Count > 0)
+			{
+				foreach (var order in guestOrders)
+				{
+					_orderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
+				}
+			}
+			
+			// 매핑에서도 제거
+			_guestIdOrderMapping.Remove(guestId);
+			_guestIdOrderNumberMapping.Remove(guestId);
+		}
+		
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
+		UpdateDeliveredOrderQueueDisplay();
+#endif
+		// 주문이 모두 처리되었으면 점멸 효과 해제
+		CheckPendingOrdersAndBlink();
+	}
+	
+	/// <summary>
+	/// 특정 손님의 주문을 큐에서 삭제합니다 (3회 실패 시 호출)
+	/// 게스트 ID를 기반으로 해당 손님의 주문만 정확히 제거
+	/// </summary>
+	public void RemoveGuestOrders(int guestId, int orderCount)
+	{
+		if (guestId == 0 || orderCount <= 0)
+			return;
+		
+		// _guestIdOrderMapping에서 해당 게스트 ID의 주문 리스트 가져오기
+		if (!_guestIdOrderMapping.ContainsKey(guestId))
+		{
+			Debug.LogWarning($"[Grill] RemoveGuestOrders: 게스트 ID {guestId}의 주문 매핑을 찾을 수 없습니다.");
+			return;
+		}
+		
+		List<Define.BurgerRecipe> guestOrders = _guestIdOrderMapping[guestId];
+		if (guestOrders == null || guestOrders.Count == 0)
+		{
+			Debug.LogWarning($"[Grill] RemoveGuestOrders: 게스트 ID {guestId}의 주문 리스트가 비어있습니다.");
+			return;
+		}
+		
+		// 해당 게스트의 주문을 _deliveredOrderQueue에서 정확히 제거
+		int removedCount = 0;
+		foreach (var order in guestOrders)
+		{
+			if (removedCount >= orderCount)
+				break;
+				
+			// _deliveredOrderQueue에서 해당 주문 제거 (IsMatch로 비교)
+			_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
+			removedCount++;
+		}
+		
+		// _orderQueue에서도 제거 (혹시 남아있을 수 있으므로)
+		if (_orderQueue.Count > 0)
+		{
+			removedCount = 0;
+			foreach (var order in guestOrders)
+			{
+				if (removedCount >= orderCount)
+					break;
+					
+				_orderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
+				removedCount++;
+			}
+		}
+		
+		// 매핑에서도 제거
+		_guestIdOrderMapping.Remove(guestId);
+		
+		// 주문 번호 매핑도 제거
+		if (_guestIdOrderNumberMapping.ContainsKey(guestId))
+		{
+			_guestIdOrderNumberMapping.Remove(guestId);
+		}
+		
+#if UNITY_EDITOR
+		// 인스펙터 표시용 업데이트
+		UpdateOrderQueueDisplay();
+		UpdateDeliveredOrderQueueDisplay();
+#endif
+		// 주문이 모두 처리되었으면 점멸 효과 해제
+		CheckPendingOrdersAndBlink();
+	}
+	
+	/// <summary>
+	/// 특정 손님의 주문을 큐에서 삭제합니다 (GuestController 오버로드)
+	/// </summary>
+	public void RemoveGuestOrders(GuestController guest, int orderCount)
+	{
+		if (guest == null)
+			return;
+		
+		RemoveGuestOrders(guest.GetInstanceID(), orderCount);
+	}
+	
+	/// <summary>
 	/// 처리되지 않은 주문들을 다시 큐에 추가합니다 (팝업이 닫힐 때 호출)
+	/// _deliveredOrderQueue에서 처리되지 않은 주문을 _orderQueue로 다시 이동
 	/// </summary>
 	public void ReturnOrders(List<Define.BurgerRecipe> orders)
 	{
 		if (orders == null || orders.Count == 0)
 			return;
 		
-		// 이미 큐에 있는 주문은 추가하지 않음 (중복 방지)
+		// 처리되지 않은 주문을 _orderQueue에 추가 (중복 방지)
 		foreach (var order in orders)
 		{
-			if (!_orderQueue.Contains(order))
+			// 이미 _orderQueue에 있는지 확인 (IsMatch로 비교)
+			bool alreadyInQueue = false;
+			foreach (var existingOrder in _orderQueue)
+			{
+				if (UI_OrderSystem.IsMatch(existingOrder, order))
+				{
+					alreadyInQueue = true;
+					break;
+				}
+			}
+			
+			if (!alreadyInQueue)
 			{
 				_orderQueue.Add(order);
 			}
 		}
 		
-		// 전달된 주문 큐에서 반환된 주문 제거 (struct이므로 직접 비교)
+		// 전달된 주문 큐에서 반환된 주문 제거 (struct이므로 IsMatch로 비교)
 		foreach (var order in orders)
 		{
 			_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
