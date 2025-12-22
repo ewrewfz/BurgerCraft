@@ -1038,40 +1038,66 @@ public class Counter : UnlockableBase
 		if (failOrder)
 		{
 			// 3회 실패 시 leavepos로 이동 후 삭제
-			// _pickupQueueGuests에 있는 손님은 이미 PickupGuestPool에 있음
-			// 일반 손님은 GuestPool에 있음
+			// 즉시 큐에서 제거하여 다른 손님들이 바로 이동할 수 있도록 함
+			bool wasFirstGuest = inQueueGuests && _queueGuests.Count > 0 && _queueGuests[0] == guest;
+			
+			// 즉시 큐에서 제거 (다른 손님들이 바로 이동할 수 있도록)
+			if (_queueGuests.Contains(guest))
+			{
+				_queueGuests.Remove(guest);
+			}
+			if (_pickupQueueGuests.Contains(guest))
+			{
+				_pickupQueueGuests.Remove(guest);
+			}
+			
+			// 딕셔너리에서도 제거
+			if (_guestOrderCounts.ContainsKey(guest))
+			{
+				_guestOrderCounts.Remove(guest);
+			}
+			if (_guestReceivedBurgers.ContainsKey(guest))
+			{
+				_guestReceivedBurgers.Remove(guest);
+			}
+			
+			// 주문 번호도 제거
+			int guestId = guest.GetInstanceID();
+			if (_guestOrderNumbers.ContainsKey(guestId))
+			{
+				_guestOrderNumbers.Remove(guestId);
+				guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
+			}
+			
+			// 주문 리셋
+			_nextOrderBurgerCount = 0;
+			_remainingOrderCount = 0;
+			
+			// 실패한 손님이 첫 번째였고, 다음 손님이 있으면 다음 손님의 주문 설정
+			if (wasFirstGuest && _queueGuests.Count > 0)
+			{
+				GuestController nextGuest = _queueGuests[0];
+				if (nextGuest != null && nextGuest.HasArrivedAtDestination && nextGuest.CurrentDestQueueIndex == 0)
+				{
+					// 다음 손님의 주문 개수 설정
+					int maxOrderCount = Mathf.Min(Define.GUEST_MAX_ORDER_BURGER_COUNT, _queueGuests.Count);
+					if (maxOrderCount > 0)
+					{
+						int orderCount = UnityEngine.Random.Range(1, maxOrderCount + 1);
+						_nextOrderBurgerCount = orderCount;
+						_remainingOrderCount = orderCount;
+						nextGuest.OrderCount = orderCount;
+						
+						// 손님별 주문 개수 저장
+						_guestOrderCounts[nextGuest] = orderCount;
+						_guestReceivedBurgers[nextGuest] = 0;
+					}
+				}
+			}
 			
 			// 실패 시 스폰 위치(leavepos)로 돌아가기
 			guest.SetDestination(GuestSpawnPos.position, () =>
 			{
-				// 도착 후 큐에서 제거
-				if (_queueGuests.Contains(guest))
-				{
-					_queueGuests.Remove(guest);
-				}
-				if (_pickupQueueGuests.Contains(guest))
-				{
-					_pickupQueueGuests.Remove(guest);
-				}
-				
-				// 딕셔너리에서도 제거
-				if (_guestOrderCounts.ContainsKey(guest))
-				{
-					_guestOrderCounts.Remove(guest);
-				}
-				if (_guestReceivedBurgers.ContainsKey(guest))
-				{
-					_guestReceivedBurgers.Remove(guest);
-				}
-				
-				// 주문 번호도 제거
-				int guestId = guest.GetInstanceID();
-				if (_guestOrderNumbers.ContainsKey(guestId))
-				{
-					_guestOrderNumbers.Remove(guestId);
-					guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
-				}
-				
 				// leavepos 도착 후 삭제
 				if (guest != null && guest.gameObject != null)
 				{
@@ -1082,13 +1108,6 @@ public class Counter : UnlockableBase
 			
 			// 주문 버블 비활성화
 			guest.OrderCount = 0;
-			
-			// 주문 리셋 (첫 번째 손님이면)
-			if (inQueueGuests && _queueGuests.Count > 0 && _queueGuests[0] == guest)
-			{
-				_nextOrderBurgerCount = 0;
-				_remainingOrderCount = 0;
-			}
 		}
 		// 성공 시는 OnGuestInteraction에서 처리하므로 여기서는 처리하지 않음
 	}
