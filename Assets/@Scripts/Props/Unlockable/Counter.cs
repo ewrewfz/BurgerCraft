@@ -262,6 +262,23 @@ public class Counter : UnlockableBase
     }
     
     /// <summary>
+    /// 특정 손님의 남은 주문 개수를 반환합니다.
+    /// </summary>
+    public int GetRemainingOrderCount(GuestController guest)
+    {
+        if (guest == null)
+            return 0;
+        
+        // 첫 번째 손님이고 _remainingOrderCount가 있으면 그것을 반환
+        if (_queueGuests.Count > 0 && _queueGuests[0] == guest)
+        {
+            return _remainingOrderCount;
+        }
+        
+        return 0;
+    }
+    
+    /// <summary>
     /// 주문 번호로 손님을 찾습니다. (주문 번호 문자열에서 숫자 추출)
     /// </summary>
     public GuestController GetGuestByOrderNumber(string orderNumberText)

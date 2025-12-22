@@ -180,10 +180,7 @@ public class UI_OrderPopup : MonoBehaviour
     
     // Show() 없이 활성화될 때 새로운 랜덤 주문 생성
     public void ShowWithRandomOrder()
-    {
-        // 새로운 랜덤 주문 생성 (기존 레시피 초기화)
-        _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
-        
+    { 
         // 현재 손님이 설정되지 않았으면 Counter에서 첫 번째 손님 찾기
         if (_currentGuest == null)
         {
@@ -400,14 +397,13 @@ public class UI_OrderPopup : MonoBehaviour
             // 주문 완료 팝업 표시
             ShowOrderCompletePopup(_currentRecipe);
             
+            // Counter 가져오기
+            Counter counter = FindObjectOfType<Counter>();
+            
             // 주문 완료 처리 - 테이블로 보내기
-            if (_currentGuest != null)
+            if (_currentGuest != null && counter != null)
             {
-                Counter counter = FindObjectOfType<Counter>();
-                if (counter != null)
-                {
-                    counter.ProcessOrderComplete(_currentGuest, false);
-                }
+                counter.ProcessOrderComplete(_currentGuest, false);
             }
             
             // 주문 완료 이벤트 호출
@@ -416,7 +412,26 @@ public class UI_OrderPopup : MonoBehaviour
                 OnOrderComplete(_currentRecipe);
             }
             
-            // OrderPopup 파괴 (성공 시)
+            // Counter에서 남은 주문 개수 확인
+            if (counter != null && _currentGuest != null)
+            {
+                // 남은 주문이 있으면 새로운 랜덤 주문으로 다시 열기
+                int remainingCount = counter.GetRemainingOrderCount(_currentGuest);
+                if (remainingCount > 0)
+                {
+                    // 레시피 초기화
+                    InitializeRecipe();
+                    // 새로운 랜덤 주문 생성
+                    _requestedRecipe = UI_OrderSystem.GenerateRandomRecipe();
+                    // UI 업데이트
+                    UpdateUI();
+                    UpdateOrderText();
+                    // 팝업은 열린 상태 유지 (Hide() 호출하지 않음)
+                    return;
+                }
+            }
+            
+            // 남은 주문이 없으면 OrderPopup 파괴
             DestroyOrderPopup();
         }
         else
