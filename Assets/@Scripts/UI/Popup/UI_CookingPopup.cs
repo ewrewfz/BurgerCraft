@@ -59,6 +59,9 @@ public class UI_CookingPopup : MonoBehaviour
     [Header("Fail Popup")]
     [SerializeField] private GameObject _failPopupPrefab;
     
+    [Header("Complete Popup")]
+    [SerializeField] private GameObject _cookingCompletePrefab;
+    
     // 선택/상태
     private readonly List<UI_CookingReceipt> _activeReceipts = new List<UI_CookingReceipt>();
     private UI_CookingReceipt _currentReceipt;
@@ -890,8 +893,16 @@ public class UI_CookingPopup : MonoBehaviour
         if (grillForRefresh != null)
         {
             List<Define.BurgerRecipe> currentDeliveredOrders = grillForRefresh.GetOrders();
-            if (currentDeliveredOrders != null && currentDeliveredOrders.Count > 0)
+            
+            // 모든 주문이 완료되었는지 확인 (_deliveredOrderQueue가 0개)
+            if (currentDeliveredOrders == null || currentDeliveredOrders.Count == 0)
             {
+                // 모든 버거 조리 완료 - CookingComplete 팝업 표시
+                ShowCookingCompletePopup();
+            }
+            else
+            {
+                // 아직 남은 주문이 있으면 영수증 리프레시
                 RefreshReceiptsFromDeliveredQueue(currentDeliveredOrders);
             }
         }
@@ -1247,6 +1258,110 @@ public class UI_CookingPopup : MonoBehaviour
                 AddReceipt(order);
             }
         }
+    }
+
+    /// <summary>
+    /// 모든 버거 조리가 완료되었을 때 CookingComplete 팝업을 표시합니다.
+    /// </summary>
+    private void ShowCookingCompletePopup()
+    {
+        // 프리팹 찾기
+        GameObject prefab = _cookingCompletePrefab;
+        if (prefab == null)
+        {
+            prefab = Resources.Load<GameObject>("Prefabs/UI/Popup/UI_CookingComplete");
+            if (prefab == null)
+            {
+                prefab = Resources.Load<GameObject>("@Resources/Prefabs/UI/Popup/UI_CookingComplete");
+            }
+        }
+        
+        if (prefab == null)
+        {
+            Debug.LogWarning("CookingComplete 팝업 프리팹을 찾을 수 없습니다.");
+            return;
+        }
+        
+        // PoolManager가 null이면 생성 불가
+        if (PoolManager.Instance == null)
+        {
+            Debug.LogWarning("PoolManager.Instance가 null입니다.");
+            return;
+        }
+        
+        // 프리팹 이름에 "Popup"이 없으면 임시로 변경하여 PopupPool에 들어가도록 함
+        string originalName = prefab.name;
+        bool nameChanged = false;
+        if (!originalName.Contains("Popup"))
+        {
+            prefab.name = originalName + "Popup";
+            nameChanged = true;
+        }
+        
+        // PoolManager에서 팝업 가져오기
+        GameObject popupObj = PoolManager.Instance.Pop(prefab);
+        
+        // 프리팹 이름 복원
+        if (nameChanged)
+        {
+            prefab.name = originalName;
+        }
+        
+        if (popupObj == null)
+        {
+            Debug.LogWarning("PoolManager.Pop()이 null을 반환했습니다.");
+            return;
+        }
+        
+        // PopupPool에 부모 설정 (확실하게 PopupPool에 들어가도록)
+        Transform popupPool = PoolManager.Instance.GetPopupPool();
+        if (popupPool != null)
+        {
+            popupObj.transform.SetParent(popupPool, false);
+        }
+        
+        // Canvas의 sortOrder를 최상단으로 설정 (다른 팝업들보다 위에 표시)
+        Canvas canvas = popupObj.GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            // PopupPool의 모든 Canvas 중 최대 sortOrder 찾기
+            int maxSortOrder = 0;
+            if (popupPool != null)
+            {
+                Canvas[] canvases = popupPool.GetComponentsInChildren<Canvas>(true);
+                foreach (Canvas c in canvases)
+                {
+                    if (c != canvas && c.sortingOrder > maxSortOrder)
+                    {
+                        maxSortOrder = c.sortingOrder;
+                    }
+                }
+            }
+            canvas.sortingOrder = maxSortOrder + 1;
+        }
+        
+        // UI_CookingComplete 컴포넌트 가져오기
+        UI_CookingComplete completePopup = popupObj.GetComponent<UI_CookingComplete>();
+        if (completePopup == null)
+        {
+            Debug.LogWarning("UI_CookingComplete 컴포넌트를 찾을 수 없습니다.");
+            PoolManager.Instance.Push(popupObj);
+            return;
+        }
+        
+        // 팝업이 닫힐 때 CookingPopup도 닫기
+        completePopup.OnCompletePopupClosed = () =>
+        {
+            // CookingPopup 비활성화 및 풀에 반환
+            gameObject.SetActive(false);
+            if (PoolManager.Instance != null)
+            {
+                PoolManager.Instance.Push(gameObject);
+            }
+        };
+        
+        // 팝업 표시
+        completePopup.Show();
     }
 
     #endregion
