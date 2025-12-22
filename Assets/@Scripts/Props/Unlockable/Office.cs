@@ -4,11 +4,18 @@ using static Define;
 [RequireComponent(typeof(WorkerInteraction))]
 public class Office : UnlockableBase
 {
-	private void Start()
+	[SerializeField]
+	private GameObject office_Wall;
+    private void OnEnable()
+    {
+        office_Wall.gameObject.SetActive(false);
+    }
+    private void Start()
 	{
 		GetComponent<WorkerInteraction>().OnTriggerStart = OnEnterOffice;
-		GetComponent<WorkerInteraction>().OnTriggerEnd = OnLeaveOffice;		
-	}
+		GetComponent<WorkerInteraction>().OnTriggerEnd = OnLeaveOffice;
+        office_Wall.gameObject.SetActive(true);
+    }
 
 	public void OnEnterOffice(WorkerController wc)
 	{
