@@ -47,6 +47,19 @@ public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 		if (GameManager.Instance.Money < _money)
 			return;
 
+		// 고용 버튼인 경우 알바생 수 체크
+		if (_type == EUpgradeEmployeePopupItemType.Hire)
+		{
+			if (GameManager.Instance.Restaurant != null)
+			{
+				int currentWorkerCount = GameManager.Instance.Restaurant.Workers.Count;
+				if (currentWorkerCount >= Define.MAX_WORKER_COUNT)
+				{
+					return; // 최대 알바생 수에 도달했으면 고용 불가
+				}
+			}
+		}
+
 		// 돈 소모.
 		GameManager.Instance.Money -= _money;
 
@@ -65,9 +78,18 @@ public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 			case EUpgradeEmployeePopupItemType.Hire:
 				{
 					GameManager.Instance.BroadcastEvent(EEventType.HireWorker);
-					GameManager.Instance.UpgradeEmployeePopup.gameObject.SetActive(false);
+					// 고용 후 UI 새로고침
+					GameManager.Instance.UpgradeEmployeePopup.RefreshUI();
 				}
 				break;
+		}
+	}
+
+	public void SetInteractable(bool interactable)
+	{
+		if (_purchaseButton != null)
+		{
+			_purchaseButton.interactable = interactable;
 		}
 	}
 }

@@ -49,6 +49,12 @@ public class Restaurant : MonoBehaviour
 
 	void OnHireWorker()
 	{
+		// 최대 알바생 수 체크
+		if (Workers.Count >= Define.MAX_WORKER_COUNT)
+		{
+			return;
+		}
+
 		GameObject go = GameManager.Instance.SpawnWorker();
 		WorkerController wc = go.GetComponent<WorkerController>();
 		go.transform.position = Define.WORKER_SPAWN_POS;

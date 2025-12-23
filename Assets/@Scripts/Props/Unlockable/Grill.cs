@@ -56,9 +56,10 @@ public class Grill : UnlockableBase
 
 		// 햄버거 인터랙션.
 		_interaction = _burgers.GetComponent<WorkerInteraction>();
-		_interaction.                                  InteractInterval = 0.2f;
+		_interaction.InteractInterval = 0.2f;
 		_interaction.OnInteraction = OnWorkerBurgerInteraction;
 		_interaction.OnTriggerStart = OnGrillTriggerStart;
+		_interaction.OnTriggerEnd = OnGrillTriggerEnd;
 
         InitBlinkEffect();
 	}
@@ -560,69 +561,196 @@ public class Grill : UnlockableBase
 
 	private void OnGrillTriggerStart(WorkerController wc)
 	{
-		// 플레이어만 처리
-		if (wc == null || wc.GetComponent<PlayerController>() == null)
+		Debug.Log($"[Grill] OnGrillTriggerStart 호출: Worker={wc?.name}, IsPlayer={wc?.GetComponent<PlayerController>() != null}");
+		
+		if (wc == null)
 			return;
-
-		// 버거가 있으면 OnInteraction에서 처리하므로 여기서는 팝업만 처리
-		// 버거가 없고 주문이 있을 때만 CookingPopup 열기
-		if (_burgers.ObjectCount == 0)
+		
+		// 플레이어인 경우 기존 로직 실행
+		if (wc.GetComponent<PlayerController>() != null)
 		{
-			// 주문 큐에 주문이 없으면 팝업을 열지 않음
-			if (!HasOrders())
-				return;
-
-			if (cookingPopup == null)
-				return;
-
-			// 이미 활성화된 팝업이 있으면 재사용
-			UI_CookingPopup existingPopup = FindObjectOfType<UI_CookingPopup>();
-			if (existingPopup != null && existingPopup.gameObject.activeInHierarchy)
+			// 알바생이 이미 작업 중이면 플레이어는 나가게 함
+			if (CurrentWorker != null && CurrentWorker.GetComponent<PlayerController>() == null)
 			{
-				// 이미 열려있으면 아무것도 하지 않음
+				// 알바생이 작업 중이므로 플레이어를 나가게 함
+				Vector3 exitPos = WorkerPos.position - WorkerPos.forward * 1.5f;
+				wc.SetDestination(exitPos);
 				return;
 			}
-
-			// 풀매니저의 PopupPool에서 비활성화된 팝업 찾기
-			UI_CookingPopup popup = null;
-			Transform popupPool = PoolManager.Instance.GetPopupPool();
 			
-			if (popupPool != null)
+			// 버거가 있으면 OnInteraction에서 처리하므로 여기서는 팝업만 처리
+			// 버거가 없고 주문이 있을 때만 CookingPopup 열기
+			if (_burgers.ObjectCount == 0)
 			{
-				// PopupPool의 자식 중에서 비활성화된 UI_CookingPopup 찾기
-				for (int i = 0; i < popupPool.childCount; i++)
+				// 주문 큐에 주문이 없으면 팝업을 열지 않음
+				if (!HasOrders())
+					return;
+
+				if (cookingPopup == null)
+					return;
+
+				// 이미 활성화된 팝업이 있으면 재사용
+				UI_CookingPopup existingPopup = FindObjectOfType<UI_CookingPopup>();
+				if (existingPopup != null && existingPopup.gameObject.activeInHierarchy)
 				{
-					Transform child = popupPool.GetChild(i);
-					if (child.name == cookingPopup.name)
+					// 이미 열려있으면 아무것도 하지 않음
+					return;
+				}
+
+				// 풀매니저의 PopupPool에서 비활성화된 팝업 찾기
+				UI_CookingPopup popup = null;
+				Transform popupPool = PoolManager.Instance.GetPopupPool();
+				
+				if (popupPool != null)
+				{
+					// PopupPool의 자식 중에서 비활성화된 UI_CookingPopup 찾기
+					for (int i = 0; i < popupPool.childCount; i++)
 					{
-						UI_CookingPopup foundPopup = child.GetComponent<UI_CookingPopup>();
-						if (foundPopup != null && !foundPopup.gameObject.activeSelf)
+						Transform child = popupPool.GetChild(i);
+						if (child.name == cookingPopup.name)
 						{
-							popup = foundPopup;
-							break;
+							UI_CookingPopup foundPopup = child.GetComponent<UI_CookingPopup>();
+							if (foundPopup != null && !foundPopup.gameObject.activeSelf)
+							{
+								popup = foundPopup;
+								break;
+							}
 						}
 					}
 				}
-			}
 
-			// 풀에서 찾지 못했으면 PoolManager를 통해 가져오기 (새로 생성 또는 풀에서 가져오기)
-			if (popup == null)
-			{
-				GameObject instance = PoolManager.Instance.Pop(cookingPopup);
-				popup = instance.GetComponent<UI_CookingPopup>();
-			}
-			
-			if (popup != null)
-			{
-				// 팝업 활성화
-				popup.gameObject.SetActive(true);
+				// 풀에서 찾지 못했으면 PoolManager를 통해 가져오기 (새로 생성 또는 풀에서 가져오기)
+				if (popup == null)
+				{
+					GameObject instance = PoolManager.Instance.Pop(cookingPopup);
+					popup = instance.GetComponent<UI_CookingPopup>();
+				}
 				
-				// 주문 큐에서 모든 주문을 가져와서 팝업에 전달 (팝업 내부에서 최대 3개만 표시)
-				// 주의: GetOrders()는 주문을 큐에서 제거하지 않음 (복사본 반환)
-				List<Define.BurgerRecipe> orders = GetOrders();
-				popup.AddOrders(orders);
+				if (popup != null)
+				{
+					// 팝업 활성화
+					popup.gameObject.SetActive(true);
+					
+					// 주문 큐에서 모든 주문을 가져와서 팝업에 전달 (팝업 내부에서 최대 3개만 표시)
+					// 주의: GetOrders()는 주문을 큐에서 제거하지 않음 (복사본 반환)
+					List<Define.BurgerRecipe> orders = GetOrders();
+					popup.AddOrders(orders);
+				}
 			}
 		}
+		// 알바생인 경우 진행바 표시 및 자동 조리 완료
+		else
+		{
+			// 주문이 있고 버거가 최대 개수 미만이면 자동 조리 시작
+			if (HasOrders() && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+			{
+				StartWorkerAutoCooking(wc);
+			}
+		}
+	}
+	
+	/// <summary>
+	/// Worker가 Grill 존에서 나갈 때 호출
+	/// </summary>
+	private void OnGrillTriggerEnd(WorkerController wc)
+	{
+		if (wc == null)
+			return;
+		
+		// 알바생인 경우 진행바 비활성화
+		if (wc.GetComponent<PlayerController>() == null)
+		{
+			UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+			if (progressbar != null)
+			{
+				progressbar.StopProgress();
+				progressbar.gameObject.SetActive(false);
+			}
+		}
+	}
+	
+	/// <summary>
+	/// 알바생이 자동으로 조리를 완료하는 로직
+	/// </summary>
+	public void StartWorkerAutoCooking(WorkerController wc)
+	{
+		// Worker의 진행바 찾기
+		UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+		if (progressbar == null)
+		{
+			Debug.LogWarning("[Grill] Worker의 UI_Progressbar를 찾을 수 없습니다.");
+			return;
+		}
+		
+		// 진행바 활성화
+		progressbar.gameObject.SetActive(true);
+		
+		// 진행바 완료 콜백 설정
+		progressbar.OnProgressComplete = () =>
+		{
+			// 주문 큐에서 첫 번째 주문 가져오기
+			Define.BurgerRecipe? orderNullable = null;
+			if (_deliveredOrderQueue.Count > 0)
+			{
+				orderNullable = _deliveredOrderQueue[0];
+			}
+			else if (_orderQueue.Count > 0)
+			{
+				orderNullable = _orderQueue[0];
+			}
+			
+			// 주문이 없으면 진행바 비활성화
+			if (!orderNullable.HasValue)
+			{
+				progressbar.gameObject.SetActive(false);
+				return;
+			}
+			
+			Define.BurgerRecipe order = orderNullable.Value;
+			
+			if (order.Bread == Define.EBreadType.None)
+			{
+				progressbar.gameObject.SetActive(false);
+				return;
+			}
+			
+			// 주문 번호 가져오기 (레시피로 조회)
+			string orderNumber = GetOrderNumberByRecipe(order);
+			
+			// 주문 제거
+			RemoveOrder(order);
+			
+			// 버거 생성 (조리 완료) - BurgerPile의 SpawnObjectWithOrderNumber 사용
+			if (_burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+			{
+				GameObject burger = _burgers.SpawnObjectWithOrderNumber();
+				
+				// 주문 번호 설정 (손님과 버거 연결)
+				if (burger != null && !string.IsNullOrEmpty(orderNumber))
+				{
+					BurgerOrderNumber orderNumberComponent = burger.GetComponent<BurgerOrderNumber>();
+					if (orderNumberComponent == null)
+					{
+						orderNumberComponent = burger.AddComponent<BurgerOrderNumber>();
+					}
+					orderNumberComponent.OrderNumber = orderNumber;
+				}
+			}
+			
+			// 주문이 더 있고 버거가 최대 개수 미만이면 다시 시작, 없으면 진행바 비활성화
+			if (HasOrders() && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+			{
+				// 다음 주문 조리 시작 (재귀 호출)
+				StartWorkerAutoCooking(wc);
+			}
+			else
+			{
+				progressbar.gameObject.SetActive(false);
+			}
+		};
+		
+		// 진행바 시작 (20초)
+		progressbar.StartProgress(20f);
 	}
 
 	public void OnWorkerBurgerInteraction(WorkerController pc)
@@ -634,9 +762,9 @@ public class Grill : UnlockableBase
 		if (pc.Tray.CurrentTrayObjectType == Define.EObjectType.Trash)
 			return;
 
-		// 플레이어만 처리
-		if (pc.GetComponent<PlayerController>() == null)
-			return;
+		// 플레이어와 알바생 모두 처리
+		// if (pc.GetComponent<PlayerController>() == null)
+		//     return;
 
 		// 그릴에 버거가 있으면 트레이에 올리기
 		if (_burgers.ObjectCount > 0)

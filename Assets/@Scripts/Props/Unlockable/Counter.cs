@@ -119,6 +119,7 @@ public class Counter : UnlockableBase
 		_cashierInteraction = machine.GetComponent<WorkerInteraction>();
 		_cashierInteraction.InteractInterval = 1;
 		_cashierInteraction.OnTriggerStart = OnBurgerTriggerStart;
+		_cashierInteraction.OnTriggerEnd = OnBurgerTriggerEnd;
         _cashierInteraction.OnInteraction = OnGuestInteraction;
 	}
 
@@ -450,6 +451,12 @@ public class Counter : UnlockableBase
 		// 손님별 주문 개수 저장
 		_guestOrderCounts[guest] = orderCount;
 		_guestReceivedBurgers[guest] = 0;
+		
+		// 알바생이 Counter에 있으면 즉시 주문 시작
+		if (CurrentCashierWorker != null && CurrentCashierWorker.GetComponent<PlayerController>() == null)
+		{
+			StartWorkerAutoOrder(CurrentCashierWorker);
+		}
 	}
 	#endregion
 	
@@ -596,33 +603,141 @@ public class Counter : UnlockableBase
 	#region Interaction
 	private void OnBurgerTriggerStart(WorkerController wc)
 	{
-		// 플레이어만 팝업 오픈
-		if (wc == null || wc.GetComponent<PlayerController>() == null)
+		if (wc == null)
 			return;
 
-		if (orderPopup == null)
-			return;
-		
-		// 첫 번째 손님이 있고 주문이 설정되어 있는지 확인
-		if (_queueGuests.Count == 0 || _nextOrderBurgerCount == 0)
-			return;
-
-		// PoolManager에서 팝업 가져오기 (풀에서 재사용하거나 새로 생성)
-		GameObject instance = PoolManager.Instance.Pop(orderPopup);
-		UI_OrderPopup popup = instance.GetComponent<UI_OrderPopup>();
-		
-		if (popup != null)
+		// 플레이어인 경우 기존 로직 실행
+		if (wc.GetComponent<PlayerController>() != null)
 		{
-			// 주문 완료 이벤트 구독 (Grill의 UI_CookingPopup에 영수증 추가)
-			popup.OnOrderComplete += OnOrderComplete;
+			// 알바생이 이미 작업 중이면 플레이어는 나가게 함
+			if (CurrentCashierWorker != null && CurrentCashierWorker.GetComponent<PlayerController>() == null)
+			{
+				// 알바생이 작업 중이므로 플레이어를 나가게 함
+				Vector3 exitPos = CashierWorkerPos.position - CashierWorkerPos.forward * 1.5f;
+				wc.SetDestination(exitPos);
+				return;
+			}
 			
-			// 첫 번째 손님 설정
-			GuestController firstGuest = _queueGuests[0];
-			popup.SetCurrentGuest(firstGuest);
-			
-			// 주문 재료 리프레쉬 (새로운 랜덤 주문)
-			popup.ShowWithRandomOrder();
+			if (orderPopup == null)
+				return;
+
+			// 첫 번째 손님이 있고 주문이 설정되어 있는지 확인
+			if (_queueGuests.Count == 0 || _nextOrderBurgerCount == 0)
+				return;
+
+			// PoolManager에서 팝업 가져오기 (풀에서 재사용하거나 새로 생성)
+			GameObject instance = PoolManager.Instance.Pop(orderPopup);
+			UI_OrderPopup popup = instance.GetComponent<UI_OrderPopup>();
+
+			if (popup != null)
+			{
+				// 주문 완료 이벤트 구독 (Grill의 UI_CookingPopup에 영수증 추가)
+				popup.OnOrderComplete += OnOrderComplete;
+
+				// 첫 번째 손님 설정
+				GuestController firstGuest = _queueGuests[0];
+				popup.SetCurrentGuest(firstGuest);
+
+				// 주문 재료 리프레쉬 (새로운 랜덤 주문)
+				popup.ShowWithRandomOrder();
+			}
 		}
+		// 알바생인 경우 진행바 표시 및 자동 주문 완료
+		else
+		{
+			// Worker가 Counter에 있으면, 손님이 도착할 때까지 대기하거나 즉시 주문 시작
+			// 손님이 있고 주문이 설정되어 있으면 즉시 시작
+			if (_queueGuests.Count > 0 && _nextOrderBurgerCount > 0)
+			{
+				StartWorkerAutoOrder(wc);
+			}
+			// 손님이 없거나 주문이 설정되지 않았으면, OnGuestInteraction에서 처리하도록 대기
+		}
+	}
+	
+	/// <summary>
+	/// Worker가 Counter 존에서 나갈 때 호출
+	/// </summary>
+	private void OnBurgerTriggerEnd(WorkerController wc)
+	{
+		if (wc == null)
+			return;
+		
+		// 알바생인 경우 진행바 비활성화
+		if (wc.GetComponent<PlayerController>() == null)
+		{
+			UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+			if (progressbar != null)
+			{
+				progressbar.StopProgress();
+				progressbar.gameObject.SetActive(false);
+			}
+		}
+	}
+	
+	/// <summary>
+	/// 알바생이 자동으로 주문을 완료하는 로직
+	/// </summary>
+	private void StartWorkerAutoOrder(WorkerController wc)
+	{
+		// Worker의 진행바 찾기
+		UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+		if (progressbar == null)
+		{
+			Debug.LogWarning("[Counter] Worker의 UI_Progressbar를 찾을 수 없습니다.");
+			return;
+		}
+		
+		// 진행바 시작
+		StartProgressbarForOrder(wc, progressbar);
+	}
+	
+	/// <summary>
+	/// 진행바를 시작합니다 (재귀적으로 호출되어 모든 주문 처리)
+	/// </summary>
+	private void StartProgressbarForOrder(WorkerController wc, UI_Progressbar progressbar)
+	{
+		// 남은 주문이 없으면 종료
+		if (_remainingOrderCount <= 0 || _queueGuests.Count == 0)
+		{
+			// 진행바 비활성화
+			if (progressbar != null)
+				progressbar.gameObject.SetActive(false);
+			return;
+		}
+		
+		// 진행바 활성화
+		progressbar.gameObject.SetActive(true);
+		
+		// 진행바 완료 콜백 설정
+		progressbar.OnProgressComplete = () =>
+		{
+			// 랜덤 주문 생성
+			Define.BurgerRecipe randomRecipe = UI_OrderSystem.GenerateRandomRecipe();
+			
+			// 주문 완료 처리
+			OnOrderComplete(randomRecipe);
+			
+			// 남은 주문이 있으면 다음 주문 진행
+			if (_remainingOrderCount > 0 && _queueGuests.Count > 0)
+			{
+				// 다음 주문을 위해 다시 진행바 시작
+				StartProgressbarForOrder(wc, progressbar);
+			}
+			else
+			{
+				// 모든 주문 완료 - 진행바 비활성화
+				progressbar.gameObject.SetActive(false);
+				
+				// 알바생을 Counter에서 나가게 해서 CurrentCashierWorker 해제
+				// 약간 뒤로 이동시켜서 Trigger에서 나가게 함
+				Vector3 exitPos = CashierWorkerPos.position - CashierWorkerPos.forward * 1.5f;
+				wc.SetDestination(exitPos);
+			}
+		};
+		
+		// 진행바 시작 (20초)
+		progressbar.StartProgress(20f);
 	}
 
 	private void OnOrderComplete(Define.BurgerRecipe recipe)
@@ -643,10 +758,15 @@ public class Counter : UnlockableBase
 			
 			int orderNumber = _guestOrderNumbers[guestId];
 			string orderNumberText = $"주문 #{orderNumber}";
+			
 			grill.AddOrder(recipe, firstGuest, orderNumberText);
 			
 			// GuestController에 주문 번호 표시 업데이트
 			firstGuest.SetOrderNumberDisplay(orderNumber);
+		}
+		else
+		{
+			Debug.LogWarning($"[Counter] OnOrderComplete: 그릴 또는 손님을 찾을 수 없음. grill={grill != null}, _queueGuests.Count={_queueGuests.Count}");
 		}
 		
 		// 첫 번째 손님의 남은 주문 개수 감소
@@ -655,16 +775,12 @@ public class Counter : UnlockableBase
 			_remainingOrderCount--;
 			GuestController firstGuest = _queueGuests[0];
 			
-			Debug.Log($"[Counter] OnOrderComplete: 남은 주문 개수={_remainingOrderCount}, 총 주문 개수={_nextOrderBurgerCount}, 손님={firstGuest?.name}");
-			
 			// 남은 주문 개수 업데이트 (UI 표시용)
 			firstGuest.OrderCount = _remainingOrderCount;
 			
 			// 모든 주문이 완료되었으면 BurgerPickupPos 큐로 이동
 			if (_remainingOrderCount == 0)
 			{
-				Debug.Log($"[Counter] OnOrderComplete: 모든 주문 완료! 손님을 픽업 큐로 이동합니다. 손님={firstGuest?.name}");
-				
 				// 손님별 주문 개수가 딕셔너리에 없으면 추가 (안전장치)
 				if (!_guestOrderCounts.ContainsKey(firstGuest))
 				{
@@ -702,11 +818,8 @@ public class Counter : UnlockableBase
 		// 주문 개수 저장 (리셋 전에)
 		int orderCount = _nextOrderBurgerCount > 0 ? _nextOrderBurgerCount : (_guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 1);
 		
-		Debug.Log($"[Counter] MoveGuestToPickupQueue: 시작. guest={guest?.name}, orderCount={orderCount}, _pickupQueuePoints.Count={_pickupQueuePoints.Count}");
-		
 		// 주문 큐에서 제거
 		RemoveGuestFromOrderQueue(guest);
-		Debug.Log($"[Counter] MoveGuestToPickupQueue: 주문 큐에서 제거 완료. 남은 손님 수={_queueGuests.Count}");
 		
 		// 버거 픽업 큐에 추가
 		if (_pickupQueuePoints.Count > 0)
@@ -715,7 +828,6 @@ public class Counter : UnlockableBase
 			if (_pickupGuestPool != null)
 			{
 				guest.transform.SetParent(_pickupGuestPool.transform);
-				Debug.Log($"[Counter] MoveGuestToPickupQueue: 손님을 PickupGuestPool로 이동. guest={guest?.name}");
 			}
 			
 			// 픽업 큐의 마지막 위치로 이동 (기존 손님들 뒤에 서기)
@@ -731,7 +843,6 @@ public class Counter : UnlockableBase
 			
 			// 픽업 큐에 추가 (목적지 설정 후)
 			AddGuestToPickupQueue(guest);
-			Debug.Log($"[Counter] MoveGuestToPickupQueue: 픽업 큐에 추가 완료. 총 손님 수={_pickupQueueGuests.Count}, dest={dest.position}, queueIndex={guest.CurrentDestQueueIndex}");
 			
 			// 손님별 주문 개수 확인 (안전장치)
 			if (!_guestOrderCounts.ContainsKey(guest))
@@ -1033,8 +1144,21 @@ public class Counter : UnlockableBase
 
 	void OnGuestInteraction(WorkerController wc)
 	{
-		// 주문 받는 로직은 OnBurgerTriggerStart에서 처리
-		// 여기서는 더 이상 테이블로 보내지 않음 (버거를 받은 후에만 테이블로 감)
+		// 알바생이 Counter에 있고, 손님이 있고, 주문이 설정되어 있으면 주문 시작
+		if (wc != null && wc.GetComponent<PlayerController>() == null)
+		{
+			if (_queueGuests.Count > 0 && _nextOrderBurgerCount > 0)
+			{
+				// 이미 진행 중인 주문이 있는지 확인
+				UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+				if (progressbar != null && progressbar.gameObject.activeSelf)
+				{
+					// 이미 진행 중이면 스킵
+					return;
+				}
+				StartWorkerAutoOrder(wc);
+			}
+		}
 	}
 
 	/// <summary>

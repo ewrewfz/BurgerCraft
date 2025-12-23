@@ -36,6 +36,12 @@ public class MainCounterSystem : SystemBase
     private void Awake()
     {
         Counter.Owner = this;
+        
+        // Jobs 배열 크기 강제 재초기화 (enum 변경 시 대비)
+        if (Jobs == null || Jobs.Length != (int)EMainCounterJob.MaxCount)
+        {
+            Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
+        }
     }
 
     private void Update()
@@ -58,8 +64,18 @@ public class MainCounterSystem : SystemBase
 
     bool ShouldDoJob(EMainCounterJob jobType)
     {
+        // 배열 범위 체크
+        int jobIndex = (int)jobType;
+        if (jobIndex < 0 || jobIndex >= Jobs.Length)
+        {
+            Debug.LogError($"[MainCounterSystem] Jobs 배열 크기 불일치: jobType={jobType}, jobIndex={jobIndex}, Jobs.Length={Jobs.Length}, MaxCount={(int)EMainCounterJob.MaxCount}");
+            // 배열 재초기화 시도
+            Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
+            return false;
+        }
+        
         // 이미 다른 직원이 점유중이라면 스킵.
-        WorkerController wc = Jobs[(int)jobType];
+        WorkerController wc = Jobs[jobIndex];
         if (wc != null)
             return false;
 
@@ -100,6 +116,19 @@ public class MainCounterSystem : SystemBase
                     }
                     return false;
                 }
+            case EMainCounterJob.CookBurger:
+                {
+                    if (Grill == null)
+                        return false;
+                    if (Grill.CurrentWorker != null)
+                        return false;
+                    // Grill에 주문이 있고 버거가 최대 개수 미만일 때 조리 필요
+                    if (!Grill.HasOrders())
+                        return false;
+                    if (Grill.BurgerCount >= Define.GRILL_MAX_BURGER_COUNT)
+                        return false;
+                    return true;
+                }
         }
 
         return false;
@@ -113,7 +142,7 @@ public class MainCounterSystem : SystemBase
 
             bool foundJob = false;
 
-            // 햄버거 운반.
+            // 햄버거 운반 (우선순위 높음 - 버거가 있으면 먼저 옮기기)
             if (ShouldDoJob(EMainCounterJob.MoveBurger))
             {
                 foundJob = true;
@@ -155,6 +184,59 @@ public class MainCounterSystem : SystemBase
                 Jobs[(int)EMainCounterJob.MoveBurger] = null;
             }
 
+            // 버거 조리 (주문이 있으면 조리)
+            if (ShouldDoJob(EMainCounterJob.CookBurger))
+            {
+                foundJob = true;
+
+                // 일감 점유.
+                Jobs[(int)EMainCounterJob.CookBurger] = wc;
+
+                // 그릴로 이동.
+                wc.SetDestination(Grill.WorkerPos.position, () =>
+                {
+                    wc.transform.rotation = Grill.WorkerPos.rotation;
+                });
+
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+
+                // 그릴 도착했으면 일정 시간 대기
+                wc.transform.rotation = Grill.WorkerPos.rotation;
+                
+                // 알바생이 그릴에 도착했을 때 직접 조리 시작 (OnGrillTriggerStart가 호출되지 않을 수 있음)
+                // 주문이 있고 버거가 최대 개수 미만이면 조리 시작
+                if (Grill.HasOrders() && Grill.BurgerCount < Define.GRILL_MAX_BURGER_COUNT)
+                {
+                    Grill.StartWorkerAutoCooking(wc);
+                }
+                
+                // 조리가 완료될 때까지 대기
+                // 진행바가 활성화되어 있으면 조리 중이므로 계속 대기
+                // 주문이 없거나 버거가 최대 개수에 도달하고 주문이 없을 때까지 대기
+                yield return new WaitUntil(() =>
+                {
+                    UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
+                    bool isCooking = progressbar != null && progressbar.gameObject.activeSelf;
+                    
+                    // 조리 중이 아니고, 주문이 없거나 버거가 최대 개수에 도달했으면 완료
+                    if (!isCooking)
+                    {
+                        return !Grill.HasOrders() || (Grill.BurgerCount >= Define.GRILL_MAX_BURGER_COUNT && !Grill.HasOrders());
+                    }
+                    return false; // 조리 중이면 계속 대기
+                });
+
+                // 조리 완료 후 알바생을 그릴에서 나가게 해서 MoveBurger Job을 할 수 있도록 함
+                // 약간 뒤로 이동시켜서 Trigger에서 나가게 함
+                Vector3 exitPos = Grill.WorkerPos.position - Grill.WorkerPos.forward * 1.5f;
+                wc.SetDestination(exitPos);
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+
+                // 일감 점유 해제.
+                Jobs[(int)EMainCounterJob.CookBurger] = null;
+            }
+
             // 카운터 계산대.
             if (ShouldDoJob(EMainCounterJob.CounterCashier))
             {
@@ -171,7 +253,10 @@ public class MainCounterSystem : SystemBase
 
                 // 계산대 도착했으면 일정 시간 대기.
                 wc.transform.rotation = Counter.CashierWorkerPos.rotation;
-                yield return new WaitForSeconds(2);
+                
+                // 알바생이 Counter 존에 있는 동안 대기 (OnBurgerTriggerStart에서 진행바가 시작됨)
+                // 알바생이 Counter 존에서 나가면 CurrentCashierWorker가 해제됨
+                yield return new WaitUntil(() => Counter.CurrentCashierWorker != wc);
 
                 // 일감 점유 해제.
                 Jobs[(int)EMainCounterJob.CounterCashier] = null;

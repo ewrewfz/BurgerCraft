@@ -18,7 +18,12 @@ public class BurgerPile : PileBase
     public GameObject SpawnObjectWithOrderNumber()
     {
         GameObject go = GameManager.Instance.SpawnBurger();
-        AddToPile(go, false);
+        // 버거를 Pile 위치에 바로 추가 (점프 없이)
+        // SpawnBurger()가 어디에 스폰하든 AddToPile에서 위치를 재설정하므로 문제 없음
+        if (go != null)
+        {
+            AddToPile(go, false);
+        }
         return go;
     }
     
