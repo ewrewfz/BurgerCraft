@@ -313,9 +313,9 @@ public class Tutorial : MonoBehaviour
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create Office");
 
 			// 가이드를 오피스 위치에 표시
-			if (_guideComponent != null && office != null)
+			if (_guideComponent != null && office != null && office.ConstructionArea != null)
 			{
-				Vector3 guidePos = office.transform.position;
+				Vector3 guidePos = office.ConstructionArea.transform.position;
 				_guideComponent.ShowAtPosition(guidePos);
 			}
 
