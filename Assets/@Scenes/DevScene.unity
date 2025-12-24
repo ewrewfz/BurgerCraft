@@ -5752,6 +5752,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _mainCounterSystem: {fileID: 933855803}
+  _guidePrefab: {fileID: 8871010209649270975, guid: 92ff2e825b1b6514bac960194081dd1b, type: 3}
 --- !u!1001 &1913759062
 PrefabInstance:
   m_ObjectHideFlags: 0

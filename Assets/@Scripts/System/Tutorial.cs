@@ -27,6 +27,11 @@ public class Tutorial : MonoBehaviour
 	[SerializeField]
 	private MainCounterSystem _mainCounterSystem;
 
+	[SerializeField]
+	private GameObject _guidePrefab;
+
+	private Guide _guideComponent;
+
 	private RestaurantData _data;
 
 	private ETutorialState _state
@@ -42,7 +47,40 @@ public class Tutorial : MonoBehaviour
 		if (_state == ETutorialState.None)
 			_state = ETutorialState.CreateFirstTable;
 
+		// 가이드 생성
+		CreateGuide();
+
 		StartCoroutine(CoStartTutorial());
+	}
+
+	/// <summary>
+	/// 가이드 오브젝트를 생성합니다.
+	/// </summary>
+	private void CreateGuide()
+	{
+		// 이미 생성되어 있으면 스킵
+		if (_guideComponent != null && _guideComponent.gameObject != null)
+			return;
+
+		// 프리팹이 있으면 생성
+		if (_guidePrefab != null)
+		{
+			GameObject guideObj = Instantiate(_guidePrefab);
+			guideObj.name = "Guide";
+			_guideComponent = guideObj.GetComponent<Guide>();
+			if (_guideComponent == null)
+			{
+				_guideComponent = guideObj.AddComponent<Guide>();
+			}
+			guideObj.SetActive(false);
+		}
+		else
+		{
+			// 프리팹이 없으면 동적으로 생성
+			GameObject guideObj = new GameObject("Guide");
+			_guideComponent = guideObj.AddComponent<Guide>();
+			guideObj.SetActive(false);
+		}
 	}
 
 	IEnumerator CoStartTutorial()
@@ -69,7 +107,22 @@ public class Tutorial : MonoBehaviour
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create First Table");
 
 			firstTable.SetUnlockedState(EUnlockedState.ProcessingConstruction);
+			
+			// 가이드를 첫 번째 테이블의 UI_ConstructionArea 위치에 표시
+			if (_guideComponent != null && firstTable != null && firstTable.ConstructionArea != null)
+			{
+				Vector3 guidePos = firstTable.ConstructionArea.transform.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+			
 			yield return new WaitUntil(() => firstTable.IsUnlocked);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.CreateBurgerMachine;
 		}
 
@@ -80,7 +133,22 @@ public class Tutorial : MonoBehaviour
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create BurgerMachine");
 
 			grill.SetUnlockedState(EUnlockedState.ProcessingConstruction);
+			
+			// 가이드를 그릴의 UI_ConstructionArea 위치에 표시
+			if (_guideComponent != null && grill != null && grill.ConstructionArea != null)
+			{
+				Vector3 guidePos = grill.ConstructionArea.transform.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			yield return new WaitUntil(() => grill.IsUnlocked);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.CreateCounter;
 		}
 
@@ -91,7 +159,22 @@ public class Tutorial : MonoBehaviour
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create Counter");
 
 			counter.SetUnlockedState(EUnlockedState.ProcessingConstruction);
+			
+			// 가이드를 카운터의 UI_ConstructionArea 위치에 표시
+			if (_guideComponent != null && counter != null && counter.ConstructionArea != null)
+			{
+				Vector3 guidePos = counter.ConstructionArea.transform.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			yield return new WaitUntil(() => counter.IsUnlocked);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.TakeOrders;
 		}
 
@@ -102,16 +185,43 @@ public class Tutorial : MonoBehaviour
 		{
 			GameManager.Instance.GameSceneUI.SetToastMessage("Take Orders");
 
+			// 가이드를 카운터 위치에 표시 (주문 받기)
+			if (_guideComponent != null && counter != null && counter.CashierWorkerPos != null)
+			{
+				Vector3 guidePos = counter.CashierWorkerPos.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			yield return new WaitUntil(() => counter.CurrentCashierWorker != null);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.MaketheBurger;
 		}
 				
 		if (_state == ETutorialState.MaketheBurger)
-
         {
 			GameManager.Instance.GameSceneUI.SetToastMessage("Make the Burger");
 
+			// 가이드를 그릴 위치에 표시 (버거 만들기)
+			if (_guideComponent != null && grill != null && grill.WorkerPos != null)
+			{
+				Vector3 guidePos = grill.WorkerPos.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			yield return new WaitUntil(() => grill.CurrentWorker != null);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.SellBurger;
 		}
 
@@ -132,11 +242,32 @@ public class Tutorial : MonoBehaviour
 
 			GameManager.Instance.GameSceneUI.SetToastMessage("Clean Table");
 
+			// 가이드를 테이블 위치에 표시 (청소)
+			if (_guideComponent != null && firstTable != null && firstTable.WorkerPos != null)
+			{
+				Vector3 guidePos = firstTable.WorkerPos.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			// 테이블 위 쓰레기를 줍고.
 			yield return new WaitUntil(() => firstTable.TableState != Define.ETableState.Dirty);
 
+			// 가이드를 쓰레기통 위치에 표시
+			if (_guideComponent != null && trashCan != null && trashCan.WorkerPos != null)
+			{
+				Vector3 guidePos = trashCan.WorkerPos.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			// 쓰레기통에 버린다.
 			yield return new WaitUntil(() => trashCan.CurrentWorker != null);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.CreateSecondTable;
 		}
 
@@ -144,8 +275,23 @@ public class Tutorial : MonoBehaviour
 		{
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create Second Table");
 
-			secondTable.SetUnlockedState(EUnlockedState.ProcessingConstruction);			
+			secondTable.SetUnlockedState(EUnlockedState.ProcessingConstruction);
+			
+			// 가이드를 두 번째 테이블의 UI_ConstructionArea 위치에 표시
+			if (_guideComponent != null && secondTable != null && secondTable.ConstructionArea != null)
+			{
+				Vector3 guidePos = secondTable.ConstructionArea.transform.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			yield return new WaitUntil(() => secondTable.IsUnlocked);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.CreateOffice;
 		}
 
@@ -155,8 +301,22 @@ public class Tutorial : MonoBehaviour
 		{
 			GameManager.Instance.GameSceneUI.SetToastMessage("Create Office");
 
+			// 가이드를 오피스 위치에 표시
+			if (_guideComponent != null && office != null)
+			{
+				Vector3 guidePos = office.transform.position;
+				_guideComponent.ShowAtPosition(guidePos);
+			}
+
 			office.SetUnlockedState(EUnlockedState.ProcessingConstruction);
 			yield return new WaitUntil(() => office.IsUnlocked);
+			
+			// 가이드 숨기기
+			if (_guideComponent != null)
+			{
+				_guideComponent.Hide();
+			}
+			
 			_state = ETutorialState.Done;
 		}
 

@@ -78,10 +78,16 @@ public class UI_CookingPopup : MonoBehaviour
     private bool _hasTopBread;
 
     // 그릴
-    private GameObject _grillPattyObject;
-    private bool _isGrilling;
-    private bool _pattyCooked;
-    private Coroutine _grillRoutine;
+    private class GrillPattyData
+    {
+        public GameObject pattyObject;
+        public bool isCooked;
+        public Coroutine grillRoutine;
+        public Button button;
+    }
+    
+    private List<GrillPattyData> _grillPatties = new List<GrillPattyData>();
+    private const int MAX_GRILL_PATTY_COUNT = 2;
 
     private void Awake()
     {
@@ -419,11 +425,10 @@ public class UI_CookingPopup : MonoBehaviour
         switch (ingredient)
         {
             case EIngredientType.Patty:
-                // 선택된 receipt의 패티 개수와 5개 중 작은 값까지만 추가 가능
-                int maxPattyCount = Mathf.Min(requestedRecipe.PattyCount, 5);
-                if (_currentRecipe.PattyCount >= maxPattyCount)
+                // 최대 개수만 체크 (레시피 개수 제한 해제)
+                if (_currentRecipe.PattyCount >= Define.ORDER_MAX_PATTY_COUNT)
                 {
-                    Debug.LogWarning($"패티는 최대 {maxPattyCount}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"패티는 최대 {Define.ORDER_MAX_PATTY_COUNT}개까지만 추가 가능합니다.");
                     return false;
                 }
 
@@ -440,20 +445,10 @@ public class UI_CookingPopup : MonoBehaviour
                     ? Define.EVeggieType.Lettuce 
                     : Define.EVeggieType.Tomato;
 
-                // 선택된 receipt에서 해당 야채의 개수 확인
-                int requestedVeggieTypeCount = requestedRecipe.Veggies != null 
-                    ? requestedRecipe.Veggies.Count(v => v == veggieType) 
-                    : 0;
-                
-                // 최대 5개까지 허용
-                int maxVeggieTypeCount = Mathf.Min(requestedVeggieTypeCount, 5);
-                
-                // 현재 추가된 해당 야채의 개수 확인
-                int currentVeggieTypeCount = _currentRecipe.Veggies.Count(v => v == veggieType);
-                
-                if (currentVeggieTypeCount >= maxVeggieTypeCount)
+                // 최대 개수만 체크 (레시피 개수 제한 해제)
+                if (_currentRecipe.Veggies.Count >= Define.ORDER_MAX_VEGGIES_TOTAL)
                 {
-                    Debug.LogWarning($"{veggieType}는 최대 {maxVeggieTypeCount}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"야채는 최대 {Define.ORDER_MAX_VEGGIES_TOTAL}개까지만 추가 가능합니다.");
                     return false;
                 }
 
@@ -461,22 +456,20 @@ public class UI_CookingPopup : MonoBehaviour
                 return true;
 
             case EIngredientType.Sauce1:
-                // 선택된 receipt의 소스1 개수와 5개 중 작은 값까지만 추가 가능
-                int maxSauce1Count = Mathf.Min(requestedRecipe.Sauce1Count, 5);
-                if (_currentRecipe.Sauce1Count >= maxSauce1Count)
+                // 최대 개수만 체크 (레시피 개수 제한 해제)
+                if (_currentRecipe.Sauce1Count >= Define.ORDER_MAX_SAUCE1_COUNT)
                 {
-                    Debug.LogWarning($"소스1은 최대 {maxSauce1Count}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"소스1은 최대 {Define.ORDER_MAX_SAUCE1_COUNT}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce1Count++;
                 return true;
 
             case EIngredientType.Sauce2:
-                // 선택된 receipt의 소스2 개수와 5개 중 작은 값까지만 추가 가능
-                int maxSauce2Count = Mathf.Min(requestedRecipe.Sauce2Count, 5);
-                if (_currentRecipe.Sauce2Count >= maxSauce2Count)
+                // 최대 개수만 체크 (레시피 개수 제한 해제)
+                if (_currentRecipe.Sauce2Count >= Define.ORDER_MAX_SAUCE2_COUNT)
                 {
-                    Debug.LogWarning($"소스2는 최대 {maxSauce2Count}개까지만 추가 가능합니다.");
+                    Debug.LogWarning($"소스2는 최대 {Define.ORDER_MAX_SAUCE2_COUNT}개까지만 추가 가능합니다.");
                     return false;
                 }
                 _currentRecipe.Sauce2Count++;
@@ -500,58 +493,118 @@ public class UI_CookingPopup : MonoBehaviour
             return;
         }
 
-        if (_isGrilling)
+        // 최대 개수 체크
+        if (_grillPatties.Count >= MAX_GRILL_PATTY_COUNT)
         {
-            Debug.Log("패티가 아직 굽는 중입니다.");
+            Debug.LogWarning($"패티는 최대 {MAX_GRILL_PATTY_COUNT}장까지만 동시에 굽을 수 있습니다.");
             return;
         }
 
-        if (_pattyCooked)
-        {
-            MovePattyFromGrillToAssembly();
-            return;
-        }
-
+        // 굽기 시작
         StartGrilling();
     }
 
     private void StartGrilling()
     {
-        ClearGrillArea();
-        _grillPattyObject = CreatePattyVisual(_rawPattySprite, _flamePattyPos);
-        _isGrilling = true;
-        _pattyCooked = false;
-        _grillRoutine = StartCoroutine(CoGrill());
+        // 패티 데이터 생성
+        GrillPattyData pattyData = new GrillPattyData
+        {
+            pattyObject = CreatePattyVisual(_rawPattySprite, _flamePattyPos),
+            isCooked = false,
+            grillRoutine = null
+        };
+        
+        if (pattyData.pattyObject == null)
+            return;
+        
+        // 패티 위치 조정 (여러 개일 때 겹치지 않도록)
+        RectTransform rt = pattyData.pattyObject.GetComponent<RectTransform>();
+        int pattyIndex = _grillPatties.Count;
+        float offsetX = (pattyIndex - (_grillPatties.Count > 0 ? 0.5f : 0f)) * 60f; // 패티 간 간격
+        rt.anchoredPosition = new Vector2(offsetX, 0);
+        
+        // 버튼 컴포넌트 추가 (클릭 가능하게)
+        Button button = pattyData.pattyObject.AddComponent<Button>();
+        button.onClick.AddListener(() => OnGrillPattyClicked(pattyData));
+        pattyData.button = button;
+        
+        _grillPatties.Add(pattyData);
+        
+        // 굽기 시작
+        pattyData.grillRoutine = StartCoroutine(CoGrill(pattyData));
     }
 
-    private IEnumerator CoGrill()
+    private IEnumerator CoGrill(GrillPattyData pattyData)
     {
         yield return new WaitForSeconds(5f);
-        _isGrilling = false;
-        _pattyCooked = true;
-
-        if (_grillPattyObject != null)
-            Destroy(_grillPattyObject);
-
-        _grillPattyObject = CreatePattyVisual(_cookedPattySprite, _flamePattyPos);
+        
+        if (pattyData == null || pattyData.pattyObject == null)
+            yield break;
+        
+        pattyData.isCooked = true;
+        
+        // 완료된 패티 스프라이트로 변경
+        Image img = pattyData.pattyObject.GetComponent<Image>();
+        if (img != null)
+        {
+            img.sprite = _cookedPattySprite;
+        }
+        
+        pattyData.grillRoutine = null;
     }
 
-    private void MovePattyFromGrillToAssembly()
+    /// <summary>
+    /// 그릴에 있는 패티를 클릭했을 때 호출
+    /// </summary>
+    private void OnGrillPattyClicked(GrillPattyData pattyData)
     {
-        if (!_pattyCooked)
+        if (pattyData == null || !pattyData.isCooked)
+            return;
+        
+        MovePattyFromGrillToAssembly(pattyData);
+    }
+
+    private void MovePattyFromGrillToAssembly(GrillPattyData pattyData)
+    {
+        if (pattyData == null || !pattyData.isCooked)
             return;
 
-        if (_grillPattyObject != null)
+        // 패티 오브젝트 제거
+        if (pattyData.pattyObject != null)
         {
-            Destroy(_grillPattyObject);
-            _grillPattyObject = null;
+            Destroy(pattyData.pattyObject);
         }
-
-        _pattyCooked = false;
+        
+        // 리스트에서 제거
+        _grillPatties.Remove(pattyData);
+        
+        // 버거 스택에 추가
         if (TryAddIngredientWithLimit(EIngredientType.Patty))
         {
             AddIngredientToAssembly(EIngredientType.Patty);
             CheckBurgerComplete();
+        }
+        
+        // 남은 패티 위치 재조정
+        RefreshGrillPattyPositions();
+    }
+
+    /// <summary>
+    /// 그릴에 있는 패티들의 위치를 재조정
+    /// </summary>
+    private void RefreshGrillPattyPositions()
+    {
+        for (int i = 0; i < _grillPatties.Count; i++)
+        {
+            if (_grillPatties[i].pattyObject == null)
+                continue;
+            
+            RectTransform rt = _grillPatties[i].pattyObject.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                float offsetX = (i - (_grillPatties.Count > 1 ? 0.5f : 0f)) * 60f;
+                rt.anchoredPosition = new Vector2(offsetX, 0);
+            }
         }
     }
 
@@ -712,11 +765,6 @@ public class UI_CookingPopup : MonoBehaviour
         _hasBottomBread = false;
         _hasTopBread = false;
 
-        if (_grillRoutine != null)
-        {
-            StopCoroutine(_grillRoutine);
-            _grillRoutine = null;
-        }
         ClearGrillArea();
 
         _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
@@ -742,13 +790,21 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void ClearGrillArea()
     {
-        if (_grillPattyObject != null)
+        // 모든 패티 제거
+        foreach (var pattyData in _grillPatties)
         {
-            Destroy(_grillPattyObject);
-            _grillPattyObject = null;
+            if (pattyData.grillRoutine != null)
+            {
+                StopCoroutine(pattyData.grillRoutine);
+            }
+            
+            if (pattyData.pattyObject != null)
+            {
+                Destroy(pattyData.pattyObject);
+            }
         }
-        _isGrilling = false;
-        _pattyCooked = false;
+        
+        _grillPatties.Clear();
     }
 
     private void CheckBurgerComplete()
