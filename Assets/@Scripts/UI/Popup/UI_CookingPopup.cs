@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -62,12 +63,19 @@ public class UI_CookingPopup : MonoBehaviour
     [Header("Complete Popup")]
     [SerializeField] private GameObject _cookingCompletePrefab;
     
+    [Header("Time Attack")]
+    [SerializeField] private TextMeshProUGUI _TimeAttackText;
+    
     // 선택/상태
     private readonly List<UI_CookingReceipt> _activeReceipts = new List<UI_CookingReceipt>();
     private UI_CookingReceipt _currentReceipt;
     private Define.BurgerRecipe _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
     private UI_CookingFailPopup _currentFailPopup;
     private bool _isMaxFailReached = false; // 3회 실패로 인한 종료인지 확인
+    
+    // 타임어택 관련
+    private Coroutine _timeAttackCoroutine;
+    private float _remainingTime;
     
     // 주문 큐 (Grill에서 받은 모든 주문을 저장)
     private readonly Queue<Define.BurgerRecipe> _orderQueue = new Queue<Define.BurgerRecipe>();
@@ -98,6 +106,12 @@ public class UI_CookingPopup : MonoBehaviour
     {
         ResetCurrentBurger();
         ResetFailPopupState();
+        
+        // 현재 선택된 영수증이 있으면 타임어택 시작
+        if (_currentReceipt != null)
+        {
+            StartTimeAttack();
+        }
     }
 
     private void OnDisable()
@@ -106,6 +120,9 @@ public class UI_CookingPopup : MonoBehaviour
         // _orderQueue는 사용하지 않음 - _deliveredOrderQueue는 Grill에서 직접 관리
         // 팝업이 비활성화될 때 정리 작업
         // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
+        
+        // 타임어택 중지
+        StopTimeAttack();
     }
 
     /// <summary>
@@ -327,6 +344,9 @@ public class UI_CookingPopup : MonoBehaviour
         
         _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
         ResetCurrentBurger();
+        
+        // 타임어택 재시작 (새로운 영수증 선택 시)
+        StartTimeAttack();
     }
 
     private void InitializeButtons()
@@ -898,6 +918,9 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void SpawnBurgerAndComplete()
     {
+        // 타임어택 중지
+        StopTimeAttack();
+        
         // 원래대로 Grill의 BurgerPile에 버거 생성
         Grill grill = FindObjectOfType<Grill>();
         if (grill != null)
@@ -960,13 +983,13 @@ public class UI_CookingPopup : MonoBehaviour
             {
                 // 아직 남은 주문이 있으면 영수증 리프레시
                 RefreshReceiptsFromDeliveredQueue(currentDeliveredOrders);
+                
+                // 다음 영수증 선택 (있는 경우) - SelectReceipt에서 타임어택이 재시작됨
+                if (_activeReceipts.Count > 0)
+                {
+                    SelectReceipt(_activeReceipts[0]);
+                }
             }
-        }
-
-        // 다음 영수증 선택 (있는 경우)
-        if (_activeReceipts.Count > 0)
-        {
-            SelectReceipt(_activeReceipts[0]);
         }
 
         ResetCurrentBurger();
@@ -1013,6 +1036,21 @@ public class UI_CookingPopup : MonoBehaviour
                             _currentFailPopup.SetAssociatedGuest(firstGuest);
                         }
                     }
+                    
+                    // 실패 팝업이 닫힌 후 타임어택 재시작 콜백 설정
+                    _currentFailPopup.OnNextButtonClicked = () =>
+                    {
+                        if (_currentFailPopup != null && _currentFailPopup.gameObject != null && _currentFailPopup.gameObject.activeSelf)
+                        {
+                            _currentFailPopup.Hide();
+                        }
+                        
+                        // 실패 팝업이 닫힌 후 타임어택 재시작 (같은 영수증에 대해)
+                        if (_currentReceipt != null)
+                        {
+                            StartTimeAttack();
+                        }
+                    };
                     
                     _currentFailPopup.AddFailCount();
                     _currentFailPopup.Show();
@@ -1088,6 +1126,12 @@ public class UI_CookingPopup : MonoBehaviour
                 if (_currentFailPopup != null && _currentFailPopup.gameObject != null && _currentFailPopup.gameObject.activeSelf)
                 {
                     _currentFailPopup.Hide();
+                }
+                
+                // 실패 팝업이 닫힌 후 타임어택 재시작 (같은 영수증에 대해)
+                if (_currentReceipt != null)
+                {
+                    StartTimeAttack();
                 }
             };
 
@@ -1418,6 +1462,92 @@ public class UI_CookingPopup : MonoBehaviour
         
         // 팝업 표시
         completePopup.Show();
+    }
+
+    #endregion
+
+    #region Time Attack
+
+    /// <summary>
+    /// 타임어택 시작
+    /// </summary>
+    private void StartTimeAttack()
+    {
+        // 현재 선택된 영수증이 없으면 타임어택 시작하지 않음
+        if (_currentReceipt == null)
+        {
+            StopTimeAttack();
+            return;
+        }
+        
+        // 기존 타이머가 있으면 중지
+        StopTimeAttack();
+        
+        // 남은 시간 초기화
+        _remainingTime = Define.ORDER_TIME_LIMIT;
+        
+        // 타이머 코루틴 시작
+        _timeAttackCoroutine = StartCoroutine(CoTimeAttack());
+    }
+    
+    /// <summary>
+    /// 타임어택 중지
+    /// </summary>
+    private void StopTimeAttack()
+    {
+        if (_timeAttackCoroutine != null)
+        {
+            StopCoroutine(_timeAttackCoroutine);
+            _timeAttackCoroutine = null;
+        }
+        
+        // 텍스트 숨기기
+        if (_TimeAttackText != null)
+        {
+            _TimeAttackText.text = "";
+        }
+    }
+    
+    /// <summary>
+    /// 타임어택 코루틴
+    /// </summary>
+    private IEnumerator CoTimeAttack()
+    {
+        while (_remainingTime > 0f)
+        {
+            // 현재 선택된 영수증이 없으면 중지
+            if (_currentReceipt == null)
+            {
+                StopTimeAttack();
+                yield break;
+            }
+            
+            // UI 업데이트
+            if (_TimeAttackText != null)
+            {
+                _TimeAttackText.text = $"남은 시간: \n{_remainingTime:F1}초";
+            }
+            
+            // 0.1초 대기
+            yield return new WaitForSeconds(0.1f);
+            _remainingTime -= 0.1f;
+        }
+        
+        // 시간 초과 - 자동 실패 처리
+        OnTimeAttackExpired();
+    }
+    
+    /// <summary>
+    /// 타임어택 시간 초과 처리
+    /// </summary>
+    private void OnTimeAttackExpired()
+    {
+        // 타임어택 중지 (실패 팝업이 닫힌 후 재시작됨)
+        StopTimeAttack();
+        
+        // 자동 실패 처리 (ShowFailPopup 호출)
+        // ShowFailPopup의 OnNextButtonClicked에서 타임어택이 재시작됨
+        ShowFailPopup();
     }
 
     #endregion

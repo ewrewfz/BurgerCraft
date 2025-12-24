@@ -84,6 +84,7 @@ public static class Define
     public const int ORDER_MAX_VEGGIES_TOTAL = 4;
     public const int ORDER_MAX_SAUCE1_COUNT = 2;
     public const int ORDER_MAX_SAUCE2_COUNT = 2;
+    public const float ORDER_TIME_LIMIT = 10f; // 주문 시간 제한 (초)
 
     // 가격(단가)
     public const int PRICE_BREAD = 3;   // 빵 1개

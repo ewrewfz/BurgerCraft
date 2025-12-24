@@ -15,6 +15,7 @@ public class UI_OrderPopup : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _RandomOrderText;
     [SerializeField] private TextMeshProUGUI _CurrentorderDetailText;
     [SerializeField] private TextMeshProUGUI _TotalPrice_Text;
+    [SerializeField] private TextMeshProUGUI _TimeAttackText;
     [SerializeField] private Button _paymentButton;
     [SerializeField] private Transform _buttonsParent;
     
@@ -27,6 +28,10 @@ public class UI_OrderPopup : MonoBehaviour
     
     // 대화형 텍스트 표시용
     private Coroutine _textDisplayCoroutine;
+    
+    // 타임어택 관련
+    private Coroutine _timeAttackCoroutine;
+    private float _remainingTime;
     
     public Action<Define.BurgerRecipe> OnOrderComplete;
     public Action OnOrderCancel;
@@ -62,6 +67,9 @@ public class UI_OrderPopup : MonoBehaviour
         
         // 자연어 주문 텍스트 표시
         UpdateOrderText();
+        
+        // 타임어택 시작
+        StartTimeAttack();
     }
     
     /// <summary>
@@ -93,6 +101,9 @@ public class UI_OrderPopup : MonoBehaviour
             StopCoroutine(_textDisplayCoroutine);
             _textDisplayCoroutine = null;
         }
+        
+        // 타임어택 중지
+        StopTimeAttack();
     }
     
     private void UpdateOrderText()
@@ -375,6 +386,9 @@ public class UI_OrderPopup : MonoBehaviour
     
     private void OnPaymentButtonClick()
     {
+        // 타임어택 중지
+        StopTimeAttack();
+        
         // 주문 일치 여부 확인
         bool isMatch = CheckOrderMatch();
         
@@ -394,19 +408,10 @@ public class UI_OrderPopup : MonoBehaviour
                 _currentFailPopup = null;
             }
             
-            // 주문 완료 팝업 표시
-            ShowOrderCompletePopup(_currentRecipe);
-            
             // Counter 가져오기
             Counter counter = FindObjectOfType<Counter>();
             
-            // 주문 완료 처리 - 테이블로 보내기
-            if (_currentGuest != null && counter != null)
-            {
-                counter.ProcessOrderComplete(_currentGuest, false);
-            }
-            
-            // 주문 완료 이벤트 호출
+            // 주문 완료 이벤트 호출 (Grill에 주문 전달)
             if (OnOrderComplete != null)
             {
                 OnOrderComplete(_currentRecipe);
@@ -426,9 +431,20 @@ public class UI_OrderPopup : MonoBehaviour
                     // UI 업데이트
                     UpdateUI();
                     UpdateOrderText();
+                    // 타임어택 다시 시작
+                    StartTimeAttack();
                     // 팝업은 열린 상태 유지 (Hide() 호출하지 않음)
                     return;
                 }
+            }
+            
+            // 모든 주문이 완료되었을 때만 완료 팝업 표시 및 처리
+            ShowOrderCompletePopup(_currentRecipe);
+            
+            // 주문 완료 처리 - 테이블로 보내기
+            if (_currentGuest != null && counter != null)
+            {
+                counter.ProcessOrderComplete(_currentGuest, false);
             }
             
             // 남은 주문이 없으면 OrderPopup 파괴
@@ -805,6 +821,82 @@ public class UI_OrderPopup : MonoBehaviour
             return false;
             
         return UI_OrderSystem.IsMatch(_currentRecipe, _requestedRecipe);
+    }
+    
+    /// <summary>
+    /// 타임어택 시작
+    /// </summary>
+    private void StartTimeAttack()
+    {
+        // 기존 타이머가 있으면 중지
+        StopTimeAttack();
+        
+        // 남은 시간 초기화
+        _remainingTime = Define.ORDER_TIME_LIMIT;
+        
+        // 타이머 코루틴 시작
+        _timeAttackCoroutine = StartCoroutine(CoTimeAttack());
+    }
+    
+    /// <summary>
+    /// 타임어택 중지
+    /// </summary>
+    private void StopTimeAttack()
+    {
+        if (_timeAttackCoroutine != null)
+        {
+            StopCoroutine(_timeAttackCoroutine);
+            _timeAttackCoroutine = null;
+        }
+        
+        // 텍스트 숨기기
+        if (_TimeAttackText != null)
+        {
+            _TimeAttackText.text = "";
+        }
+    }
+    
+    /// <summary>
+    /// 타임어택 코루틴
+    /// </summary>
+    private IEnumerator CoTimeAttack()
+    {
+        while (_remainingTime > 0f)
+        {
+            // UI 업데이트
+            if (_TimeAttackText != null)
+            {
+                _TimeAttackText.text = $"남은 시간: \n{_remainingTime:F1}초";
+            }
+            
+            // 1초 대기
+            yield return new WaitForSeconds(0.1f);
+            _remainingTime -= 0.1f;
+        }
+        
+        // 시간 초과 - 자동 실패 처리
+        OnTimeAttackExpired();
+    }
+    
+    /// <summary>
+    /// 타임어택 시간 초과 처리
+    /// </summary>
+    private void OnTimeAttackExpired()
+    {
+        // 타임어택 중지
+        StopTimeAttack();
+        
+        // 시간 초과 텍스트 표시
+        if (_TimeAttackText != null)
+        {
+            _TimeAttackText.text = "시간 초과!";
+        }
+        
+        // 자동 실패 처리 (ShowOrderFailPopup 호출)
+        ShowOrderFailPopup();
+        
+        // 팝업 숨기기
+        Hide();
     }
 }
 
