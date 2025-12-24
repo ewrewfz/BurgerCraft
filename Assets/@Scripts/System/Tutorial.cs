@@ -174,8 +174,10 @@ public class Tutorial : MonoBehaviour
 			{
 				_guideComponent.Hide();
 			}
-			
-			_state = ETutorialState.TakeOrders;
+
+            GameManager.Instance.GameSceneUI.SetToastMessage("We'll have a customer soon...");
+
+            _state = ETutorialState.TakeOrders;
 		}
 
 		counter.SetUnlockedState(EUnlockedState.Unlocked);
@@ -183,6 +185,15 @@ public class Tutorial : MonoBehaviour
 
 		if (_state == ETutorialState.TakeOrders)
 		{
+			// 첫 번째 손님이 큐에 도착할 때까지 대기
+			yield return new WaitUntil(() =>
+			{
+				GuestController firstGuest = counter.GetFirstOrderQueueGuest();
+				return firstGuest != null && 
+				       firstGuest.HasArrivedAtDestination && 
+				       firstGuest.CurrentDestQueueIndex == 0;
+			});
+			
 			GameManager.Instance.GameSceneUI.SetToastMessage("Take Orders");
 
 			// 가이드를 카운터 위치에 표시 (주문 받기)
