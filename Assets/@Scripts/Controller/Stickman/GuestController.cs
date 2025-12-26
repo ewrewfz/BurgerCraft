@@ -3,6 +3,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.InputSystem.XR;
+using TMPro;
 using static Define;
 
 public class GuestController : StickmanController
@@ -35,6 +36,13 @@ public class GuestController : StickmanController
     [SerializeField] private int _orderNumberDisplay = 0;
     public int OrderNumberDisplay => _orderNumberDisplay;
     
+    // 주문번호 UI 텍스트 (인스펙터에서 직접 할당)
+    [SerializeField] private TextMeshProUGUI _orderNumberText;
+    
+    // Canvas 회전용
+    private Transform _orderNumberCanvasTransform;
+    private Camera _mainCamera;
+    
     // angryEmoji 비활성화 코루틴 참조
     private Coroutine _angryEmojiHideCoroutine;
     
@@ -44,6 +52,19 @@ public class GuestController : StickmanController
     public void SetOrderNumberDisplay(int orderNumber)
     {
         _orderNumberDisplay = orderNumber;
+        UpdateOrderNumberText();
+    }
+    
+    /// <summary>
+    /// 주문번호 텍스트를 UI에 표시합니다.
+    /// </summary>
+    private void UpdateOrderNumberText()
+    {
+        if (_orderNumberText != null)
+        {
+            // 주문번호 : (GUID) 형식으로 표시
+            _orderNumberText.text = _orderNumberDisplay > 0 ? $"주문번호 : {_orderNumberDisplay}" : "주문번호 :";
+        }
     }
 
     protected override void Awake()
@@ -53,6 +74,32 @@ public class GuestController : StickmanController
         {
             angryEmoji.SetActive(false);
         }
+        
+        // Canvas 찾기
+        if (_orderNumberText != null)
+        {
+            Canvas canvas = _orderNumberText.GetComponentInParent<Canvas>();
+            if (canvas != null)
+            {
+                _orderNumberCanvasTransform = canvas.transform;
+            }
+        }
+        
+        // 메인 카메라 찾기
+        _mainCamera = Camera.main;
+        if (_mainCamera == null)
+        {
+            _mainCamera = FindObjectOfType<Camera>();
+        }
+        
+        // 주문번호 텍스트 초기화
+        UpdateOrderNumberText();
+    }
+    
+    private void OnEnable()
+    {
+        // 활성화될 때 주문번호 텍스트 업데이트
+        UpdateOrderNumberText();
     }
 
     protected override void Update()
@@ -75,6 +122,19 @@ public class GuestController : StickmanController
         else
         {
             _navMeshAgent.isStopped = true;
+        }
+    }
+    
+    private void LateUpdate()
+    {
+        // Canvas가 항상 카메라를 바라보도록 회전
+        if (_orderNumberCanvasTransform != null && _mainCamera != null)
+        {
+            Vector3 directionToCamera = _mainCamera.transform.position - _orderNumberCanvasTransform.position;
+            if (directionToCamera != Vector3.zero)
+            {
+                _orderNumberCanvasTransform.rotation = Quaternion.LookRotation(directionToCamera) * Quaternion.Euler(0, 180, 0);
+            }
         }
     }
     

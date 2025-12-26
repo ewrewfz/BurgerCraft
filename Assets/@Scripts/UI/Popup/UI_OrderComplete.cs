@@ -33,6 +33,27 @@ public class UI_OrderComplete : MonoBehaviour
     
     public void Show(Define.BurgerRecipe recipe)
     {
+        // Canvas의 SortOrder 자동 설정
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            Transform popupPool = PoolManager.Instance.GetPopupPool();
+            if (popupPool != null)
+            {
+                // PopupPool의 모든 Canvas 중 최대 sortOrder 찾기
+                int maxSortOrder = 0;
+                Canvas[] canvases = popupPool.GetComponentsInChildren<Canvas>(true);
+                foreach (Canvas c in canvases)
+                {
+                    if (c != canvas && c.sortingOrder > maxSortOrder)
+                    {
+                        maxSortOrder = c.sortingOrder;
+                    }
+                }
+                canvas.sortingOrder = maxSortOrder + 1;
+            }
+        }
+        
         // 레시피 텍스트 업데이트
         if (_ReceiptText != null)
         {
@@ -82,13 +103,23 @@ public class UI_OrderComplete : MonoBehaviour
                 .OnComplete(() => 
                 {
                     OnCompletePopupClosed?.Invoke();
-                    Destroy(gameObject);
+                    gameObject.SetActive(false);
+                    // PoolManager에 반환
+                    if (PoolManager.Instance != null)
+                    {
+                        PoolManager.Instance.Push(gameObject);
+                    }
                 });
         }
         else
         {
             OnCompletePopupClosed?.Invoke();
-            Destroy(gameObject);
+            gameObject.SetActive(false);
+            // PoolManager에 반환
+            if (PoolManager.Instance != null)
+            {
+                PoolManager.Instance.Push(gameObject);
+            }
         }
     }
     

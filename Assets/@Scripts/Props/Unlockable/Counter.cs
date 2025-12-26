@@ -204,21 +204,7 @@ public class Counter : UnlockableBase
 			go.name = GameManager.Instance.GuestPrefab.name;
 		}
 	}
-	
-	/// <summary>
-	/// 실패로 인해 손님이 파괴된 후 즉시 새 손님을 스폰합니다.
-	/// </summary>
-	private IEnumerator CoSpawnGuestAfterFail()
-	{
-		// 짧은 딜레이 후 스폰 (손님이 완전히 사라진 후)
-		yield return new WaitForSeconds(0.5f);
-		
-		// 큐에 공간이 있으면 즉시 스폰
-		if (_queueGuests.Count < _queuePoints.Count)
-		{
-			SpawnSingleGuest();
-		}
-	}
+
     /// <summary>
     /// 첫 번째 손님 반환 (주문 큐 우선, 없으면 픽업 큐)
     /// </summary>
@@ -736,8 +722,13 @@ public class Counter : UnlockableBase
 			}
 		};
 		
-		// 진행바 시작 (20초)
-		progressbar.StartProgress(20f);
+		// 진행바 시작 (부스터 레벨에 따라 시간 조정)
+		float workDuration = Define.BASE_WORKER_WORK_DURATION;
+		if (GameManager.Instance != null && GameManager.Instance.Restaurant != null)
+		{
+			workDuration = GameManager.Instance.Restaurant.GetWorkerWorkDuration();
+		}
+		progressbar.StartProgress(workDuration);
 	}
 
 	private void OnOrderComplete(Define.BurgerRecipe recipe)

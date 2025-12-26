@@ -19,6 +19,7 @@ public class Grill : UnlockableBase
 	public int BurgerCount => _burgers.ObjectCount;
 	public WorkerController CurrentWorker => _interaction.CurrentWorker;
 	public Transform WorkerPos;
+	public Transform BurgerPickupPos; // 버거 픽업 전용 위치
 	public GameObject MaxObject;
 	public bool StopSpawnBurger = true;
 	
@@ -159,10 +160,50 @@ public class Grill : UnlockableBase
 	
 	/// <summary>
 	/// 레시피로 주문 번호를 가져옵니다.
+	/// 주문 큐의 순서를 우선적으로 고려하여 정확한 주문 번호를 반환합니다.
 	/// </summary>
 	public string GetOrderNumberByRecipe(Define.BurgerRecipe recipe)
 	{
-		// _guestIdOrderMapping을 순회하여 해당 레시피를 찾고, 게스트 ID로 주문 번호 조회
+		// 먼저 _deliveredOrderQueue에서 해당 레시피를 찾고, 그 순서에 맞는 게스트 ID 찾기
+		// _deliveredOrderQueue의 순서가 실제 처리 순서이므로 이를 우선적으로 사용
+		foreach (var orderInQueue in _deliveredOrderQueue)
+		{
+			if (UI_OrderSystem.IsMatch(orderInQueue, recipe))
+			{
+				// 이 레시피를 가진 게스트 ID 찾기
+				foreach (var kvp in _guestIdOrderMapping)
+				{
+					foreach (var order in kvp.Value)
+					{
+						if (UI_OrderSystem.IsMatch(order, orderInQueue))
+						{
+							return GetOrderNumber(kvp.Key);
+						}
+					}
+				}
+			}
+		}
+		
+		// _deliveredOrderQueue에서 찾지 못했으면 _orderQueue에서 찾기
+		foreach (var orderInQueue in _orderQueue)
+		{
+			if (UI_OrderSystem.IsMatch(orderInQueue, recipe))
+			{
+				// 이 레시피를 가진 게스트 ID 찾기
+				foreach (var kvp in _guestIdOrderMapping)
+				{
+					foreach (var order in kvp.Value)
+					{
+						if (UI_OrderSystem.IsMatch(order, orderInQueue))
+						{
+							return GetOrderNumber(kvp.Key);
+						}
+					}
+				}
+			}
+		}
+		
+		// 큐에서 찾지 못했으면 기존 방식으로 폴백 (하위 호환성)
 		foreach (var kvp in _guestIdOrderMapping)
 		{
 			foreach (var order in kvp.Value)
@@ -253,6 +294,30 @@ public class Grill : UnlockableBase
 			{
 				_orderQueue.RemoveAt(i);
 				break; // 하나만 제거하고 종료
+			}
+		}
+		
+		// _guestIdOrderMapping에서도 해당 레시피 제거 (중요: 매핑 동기화)
+		foreach (var kvp in _guestIdOrderMapping.ToList())
+		{
+			int guestId = kvp.Key;
+			List<Define.BurgerRecipe> guestOrders = kvp.Value;
+			
+			// 해당 게스트의 주문 리스트에서 일치하는 레시피 제거
+			for (int i = guestOrders.Count - 1; i >= 0; i--)
+			{
+				if (UI_OrderSystem.IsMatch(guestOrders[i], recipe))
+				{
+					guestOrders.RemoveAt(i);
+					break; // 하나만 제거하고 종료
+				}
+			}
+			
+			// 게스트의 모든 주문이 제거되었으면 매핑에서도 제거
+			if (guestOrders.Count == 0)
+			{
+				_guestIdOrderMapping.Remove(guestId);
+				_guestIdOrderNumberMapping.Remove(guestId);
 			}
 		}
 		
@@ -749,8 +814,13 @@ public class Grill : UnlockableBase
 			}
 		};
 		
-		// 진행바 시작 (20초)
-		progressbar.StartProgress(20f);
+		// 진행바 시작 (부스터 레벨에 따라 시간 조정)
+		float workDuration = Define.BASE_WORKER_WORK_DURATION;
+		if (GameManager.Instance != null && GameManager.Instance.Restaurant != null)
+		{
+			workDuration = GameManager.Instance.Restaurant.GetWorkerWorkDuration();
+		}
+		progressbar.StartProgress(workDuration);
 	}
 
 	public void OnWorkerBurgerInteraction(WorkerController pc)

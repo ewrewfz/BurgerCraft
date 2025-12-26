@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using static Define;
 
 public class GameManager : Singleton<GameManager>
@@ -33,6 +34,10 @@ public class GameManager : Singleton<GameManager>
             BroadcastEvent(EEventType.MoneyChanged);
         }
     }
+    
+    // 일시정지 관련
+    private bool _isPaused = false;
+    public bool IsPaused => _isPaused;
 
     private void Start()
     {
@@ -40,7 +45,7 @@ public class GameManager : Singleton<GameManager>
         UpgradeEmployeePopup.gameObject.SetActive(false);
         StartCoroutine(CoInitialize());
     }
-
+    
     public IEnumerator CoInitialize()
     {
         yield return new WaitForEndOfFrame();
@@ -62,6 +67,18 @@ public class GameManager : Singleton<GameManager>
 
             SaveData.RestaurantIndex = Restaurant.StageNum;
             SaveData.PlayerPosition = Player.transform.position;
+            
+            // Restaurant 데이터 저장
+            if (Restaurant != null && SaveData.Restaurants != null && Restaurant.StageNum < SaveData.Restaurants.Count)
+            {
+                RestaurantData restaurantData = SaveData.Restaurants[Restaurant.StageNum];
+                if (restaurantData != null)
+                {
+                    restaurantData.WorkerCount = Restaurant.Workers.Count;
+                    restaurantData.WorkerBoosterLevel = Restaurant.WorkerBoosterLevel;
+                    restaurantData.WorkerSpeedLevel = Restaurant.WorkerSpeedLevel;
+                }
+            }
 
             SaveManager.Instance.SaveGame();
         }

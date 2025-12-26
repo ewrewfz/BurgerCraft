@@ -1,0 +1,23 @@
+# ninja log v5
+55	372	7880902978138387	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	dfd414c4e1ffdb49
+0	1833	7880902992704453	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	d6eb27629bec9e5f
+33	1541	7880902989792100	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	222c17359b00aa36
+375	610	7880902980468200	C:/Users/mpole/Desktop/Git/BurgerCraft/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/442r555u/obj/arm64-v8a/libswappywrapper.so	da63bab7710af21
+24	1525	7880902989643543	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	e78aee0e8db670aa
+12	1549	7880902989869092	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	6761be12414187ef
+6	1598	7880902990368541	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	9076c65a0fe20fce
+46	1551	7880902989869092	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	1fc280e6f1ec4380
+18	1746	7880902991848044	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	6ad1e9bf821d8b30
+39	1915	7880902993548753	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	38b5ebda9621c90d
+1916	2059	7880902994981109	C:/Users/mpole/Desktop/Git/BurgerCraft/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/442r555u/obj/arm64-v8a/libgame.so	29c11ae11a32b784
+81	247	7880917531525283	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	dfd414c4e1ffdb49
+248	424	7880917533303787	C:/Users/mpole/Desktop/Git/BurgerCraft/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/442r555u/obj/arm64-v8a/libswappywrapper.so	da63bab7710af21
+27	1059	7880917539590988	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	222c17359b00aa36
+62	1077	7880917539823318	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	e78aee0e8db670aa
+37	1080	7880917539805327	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	6761be12414187ef
+45	1113	7880917540166877	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	1fc280e6f1ec4380
+20	1130	7880917540334485	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	9076c65a0fe20fce
+72	1269	7880917541743959	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	38b5ebda9621c90d
+54	1352	7880917542598091	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	6ad1e9bf821d8b30
+14	1418	7880917543208083	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	d6eb27629bec9e5f
+1418	1536	7880917544428175	C:/Users/mpole/Desktop/Git/BurgerCraft/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/442r555u/obj/arm64-v8a/libgame.so	29c11ae11a32b784

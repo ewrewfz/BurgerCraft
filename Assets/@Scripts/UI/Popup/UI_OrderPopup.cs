@@ -494,25 +494,14 @@ public class UI_OrderPopup : MonoBehaviour
             return;
         }
         
-        // 팝업 생성
-        GameObject popupObj = Instantiate(prefab);
-        
-        // Canvas 찾기
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas != null)
-        {
-            popupObj.transform.SetParent(canvas.transform, false);
-        }
-        else
-        {
-            popupObj.transform.SetParent(transform.root, false);
-        }
+        // PoolManager를 사용하여 팝업 생성
+        GameObject popupObj = PoolManager.Instance.Pop(prefab);
         
         // UI_OrderComplete 컴포넌트 가져와서 Show 호출
         UI_OrderComplete orderComplete = popupObj.GetComponent<UI_OrderComplete>();
         if (orderComplete == null)
         {
-            Destroy(popupObj);
+            PoolManager.Instance.Push(popupObj);
             return;
         }
         

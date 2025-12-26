@@ -27,6 +27,8 @@ public class RestaurantData
 	public int WorkerCount;
 
 	// 업그레이드.
+	public int WorkerBoosterLevel = 0; // Worker Booster 레벨 (0~3)
+	public int WorkerSpeedLevel = 0; // Worker Speed 레벨 (0~3)
 
 	// 프랍들.
 	public ETutorialState TutorialState = ETutorialState.None;

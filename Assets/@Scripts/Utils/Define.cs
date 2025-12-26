@@ -9,6 +9,8 @@ public static class Define
         MoneyChanged,
         HireWorker,
         UnlockProp,
+        WorkerBoosterUpgraded,
+        WorkerSpeedUpgraded,
 
         MaxCount
     }
@@ -67,6 +69,16 @@ public static class Define
     public const int GUEST_MAX_ORDER_BURGER_COUNT = 2;
     public const int MAX_WORKER_COUNT = 3;
 
+    // Worker Booster 관련 상수
+    public const int MAX_WORKER_BOOSTER_LEVEL = 3; // 최대 부스터 레벨
+    public const float WORKER_BOOSTER_TIME_REDUCTION = 5f; // 레벨당 시간 감소량 (초)
+    public const float BASE_WORKER_WORK_DURATION = 20f; // 기본 작업 시간 (초)
+    
+    // Worker Speed 관련 상수
+    public const int MAX_WORKER_SPEED_LEVEL = 3; // 최대 스피드 레벨
+    public const float WORKER_SPEED_INCREASE = 0.3f; // 레벨당 속도 증가량
+    public const float BASE_WORKER_MOVE_SPEED = 3f; // 기본 이동 속도
+    
     public static Vector3 WORKER_SPAWN_POS = new Vector3(24.33f, 0, 21.42f);
     public static Vector3 GUEST_LEAVE_POS = new Vector3(0, 0, 0);
 
@@ -133,11 +145,5 @@ public static class Define
         // 소스 수량
         public int Sauce1Count;  // 0 ~ ORDER_MAX_SAUCE1_COUNT
         public int Sauce2Count;  // 0 ~ ORDER_MAX_SAUCE2_COUNT
-    }
-
-    public struct BurgerOrder
-    {
-        public BurgerRecipe Requested;
-        public int FailCount; // 실패 카운트(3회 시 퇴장)
     }
 }

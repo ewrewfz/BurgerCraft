@@ -150,17 +150,18 @@ public class MainCounterSystem : SystemBase
                 // 일감 점유.
                 Jobs[(int)EMainCounterJob.MoveBurger] = wc;
 
-                // 그릴로 이동.
-                wc.SetDestination(Grill.WorkerPos.position, () =>
+                // 버거 픽업 위치로 이동 (BurgerPickupPos가 있으면 사용, 없으면 WorkerPos 사용)
+                Transform pickupPos = Grill.BurgerPickupPos != null ? Grill.BurgerPickupPos : Grill.WorkerPos;
+                wc.SetDestination(pickupPos.position, () =>
                 {
-                    wc.transform.rotation = Grill.WorkerPos.rotation;
+                    wc.transform.rotation = pickupPos.rotation;
                 });
 
                 // 가는중.
                 yield return new WaitUntil(() => wc.HasArrivedAtDestination);
 
-                // 그릴 도착했으면 일정 시간 대기.
-                wc.transform.rotation = Grill.WorkerPos.rotation;
+                // 픽업 위치 도착했으면 일정 시간 대기.
+                wc.transform.rotation = pickupPos.rotation;
                 
                 // 버거를 트레이에 쌓기
                 Grill.OnWorkerBurgerInteraction(wc);
@@ -212,28 +213,38 @@ public class MainCounterSystem : SystemBase
                 }
                 
                 // 조리가 완료될 때까지 대기
-                // 진행바가 활성화되어 있으면 조리 중이므로 계속 대기
-                // 주문이 없거나 버거가 최대 개수에 도달하고 주문이 없을 때까지 대기
+                // 주문이 없거나 버거가 최대 개수에 도달했을 때까지 대기
+                // 주문이 생기면 자동으로 조리 시작
                 yield return new WaitUntil(() =>
                 {
+                    // 진행바 상태 확인
                     UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
                     bool isCooking = progressbar != null && progressbar.gameObject.activeSelf;
                     
-                    // 조리 중이 아니고, 주문이 없거나 버거가 최대 개수에 도달했으면 완료
-                    if (!isCooking)
+                    // 조리 중이 아니고 주문이 있으면 조리 시작
+                    if (!isCooking && Grill.HasOrders() && Grill.BurgerCount < Define.GRILL_MAX_BURGER_COUNT)
                     {
-                        return !Grill.HasOrders() || (Grill.BurgerCount >= Define.GRILL_MAX_BURGER_COUNT && !Grill.HasOrders());
+                        Grill.StartWorkerAutoCooking(wc);
+                        return false; // 조리 시작했으므로 계속 대기
                     }
-                    return false; // 조리 중이면 계속 대기
+                    
+                    // 주문이 없거나 버거가 최대 개수에 도달하고 주문이 없으면 완료
+                    if (!Grill.HasOrders())
+                    {
+                        return true; // 주문이 없으면 완료
+                    }
+                    
+                    // 버거가 최대 개수에 도달했고 주문이 없으면 완료
+                    if (Grill.BurgerCount >= Define.GRILL_MAX_BURGER_COUNT && !Grill.HasOrders())
+                    {
+                        return true;
+                    }
+                    
+                    // 조리 중이면 계속 대기
+                    return false;
                 });
 
-                // 조리 완료 후 알바생을 그릴에서 나가게 해서 MoveBurger Job을 할 수 있도록 함
-                // 약간 뒤로 이동시켜서 Trigger에서 나가게 함
-                Vector3 exitPos = Grill.WorkerPos.position - Grill.WorkerPos.forward * 1.5f;
-                wc.SetDestination(exitPos);
-                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
-
-                // 일감 점유 해제.
+                // 일감 점유 해제 (그릴에 계속 머물면서 다음 주문을 기다림)
                 Jobs[(int)EMainCounterJob.CookBurger] = null;
             }
 

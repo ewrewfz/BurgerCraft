@@ -7,7 +7,7 @@ public enum EUpgradeEmployeePopupItemType
 {
 	None,
 	Speed,
-	Capacity,
+    WorkerBooster,
 	Hire
 }
 
@@ -59,6 +59,44 @@ public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 				}
 			}
 		}
+		
+		// Speed 버튼인 경우 알바생 수 및 최대 레벨 체크
+		if (_type == EUpgradeEmployeePopupItemType.Speed)
+		{
+			if (GameManager.Instance.Restaurant != null)
+			{
+				int currentWorkerCount = GameManager.Instance.Restaurant.Workers.Count;
+				if (currentWorkerCount == 0)
+				{
+					return; // 알바생이 없으면 구매 불가
+				}
+				
+				int currentLevel = GameManager.Instance.Restaurant.WorkerSpeedLevel;
+				if (currentLevel >= Define.MAX_WORKER_SPEED_LEVEL)
+				{
+					return; // 최대 레벨에 도달했으면 구매 불가
+				}
+			}
+		}
+		
+		// Worker Booster 버튼인 경우 알바생 수 및 최대 레벨 체크
+		if (_type == EUpgradeEmployeePopupItemType.WorkerBooster)
+		{
+			if (GameManager.Instance.Restaurant != null)
+			{
+				int currentWorkerCount = GameManager.Instance.Restaurant.Workers.Count;
+				if (currentWorkerCount == 0)
+				{
+					return; // 알바생이 없으면 구매 불가
+				}
+				
+				int currentLevel = GameManager.Instance.Restaurant.WorkerBoosterLevel;
+				if (currentLevel >= Define.MAX_WORKER_BOOSTER_LEVEL)
+				{
+					return; // 최대 레벨에 도달했으면 구매 불가
+				}
+			}
+		}
 
 		// 돈 소모.
 		GameManager.Instance.Money -= _money;
@@ -67,12 +105,37 @@ public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 		{
 			case EUpgradeEmployeePopupItemType.Speed:
 				{
-					// TODO
+					if (GameManager.Instance.Restaurant != null)
+					{
+						// Speed 레벨 증가
+						GameManager.Instance.Restaurant.WorkerSpeedLevel++;
+						
+						// 모든 알바생의 속도 업데이트
+						GameManager.Instance.Restaurant.UpdateAllWorkersSpeed();
+						
+						// 이벤트 브로드캐스트 (저장을 위해)
+						GameManager.Instance.BroadcastEvent(EEventType.WorkerSpeedUpgraded);
+						
+						// UI 새로고침
+						RefreshUI();
+						GameManager.Instance.UpgradeEmployeePopup.RefreshUI();
+					}
 				}
 				break;
-			case EUpgradeEmployeePopupItemType.Capacity:
+			case EUpgradeEmployeePopupItemType.WorkerBooster:
 				{
-					// TODO
+					if (GameManager.Instance.Restaurant != null)
+					{
+						// 부스터 레벨 증가
+						GameManager.Instance.Restaurant.WorkerBoosterLevel++;
+						
+						// 이벤트 브로드캐스트 (저장을 위해)
+						GameManager.Instance.BroadcastEvent(EEventType.WorkerBoosterUpgraded);
+						
+						// UI 새로고침
+						RefreshUI();
+						GameManager.Instance.UpgradeEmployeePopup.RefreshUI();
+					}
 				}
 				break;
 			case EUpgradeEmployeePopupItemType.Hire:

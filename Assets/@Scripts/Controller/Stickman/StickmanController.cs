@@ -14,6 +14,18 @@ public class StickmanController : MonoBehaviour
 
 	[SerializeField]
 	protected float _rotateSpeed = 360;
+	
+	/// <summary>
+	/// 이동 속도를 설정합니다.
+	/// </summary>
+	public void SetMoveSpeed(float speed)
+	{
+		_moveSpeed = speed;
+		if (_navMeshAgent != null)
+		{
+			_navMeshAgent.speed = _moveSpeed;
+		}
+	}
 
 	protected Animator _animator;
 	protected AudioSource _audioSource;
