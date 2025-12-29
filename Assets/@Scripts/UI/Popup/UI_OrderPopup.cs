@@ -516,6 +516,9 @@ public class UI_OrderPopup : MonoBehaviour
             return;
         }
         
+        // 주문 실패 시 사운드 재생
+        SoundManager.Instance.PlaySFX("SFX_fail");
+        
         // 실패 카운트 증가 (먼저 증가시켜서 3회인지 확인)
         _currentGuest.AddFailCount();
         int currentFailCount = _currentGuest.FailCount;

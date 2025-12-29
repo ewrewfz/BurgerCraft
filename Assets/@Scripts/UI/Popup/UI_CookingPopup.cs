@@ -550,8 +550,21 @@ public class UI_CookingPopup : MonoBehaviour
         
         _grillPatties.Add(pattyData);
         
+        // 패티 클릭 시 그릴 소리 3초 재생
+        SoundManager.Instance.PlaySFX("SFX_Grilling");
+        StartCoroutine(CoStopGrillingSoundAfterDelay(3f));
+        
         // 굽기 시작
         pattyData.grillRoutine = StartCoroutine(CoGrill(pattyData));
+    }
+    
+    /// <summary>
+    /// 그릴 소리를 일정 시간 후 중지하는 코루틴
+    /// </summary>
+    private IEnumerator CoStopGrillingSoundAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        SoundManager.Instance.StopAllSFX();
     }
 
     private IEnumerator CoGrill(GrillPattyData pattyData)
@@ -1012,6 +1025,9 @@ public class UI_CookingPopup : MonoBehaviour
         {
             return;
         }
+        
+        // 쿠킹 실패 시 사운드 재생
+        SoundManager.Instance.PlaySFX("SFX_fail");
         
         // 팝업이 이미 비활성화되어 있으면 새로 생성
         if (_currentFailPopup != null)

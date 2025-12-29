@@ -574,6 +574,9 @@ public class Counter : UnlockableBase
 			
 			if (burgerTaken)
 			{
+				// 손님이 버거를 받을 때 사운드 재생
+				SoundManager.Instance.PlaySFX("SFX_Stack_Customer");
+				
 				_guestReceivedBurgers[guest] = receivedCount + 1;
 				
 				// 모든 버거를 받았으면 테이블로 보내기
@@ -968,6 +971,9 @@ public class Counter : UnlockableBase
 						
 						if (burgerTaken)
 						{
+							// 손님이 버거를 받을 때 사운드 재생
+							SoundManager.Instance.PlaySFX("SFX_Stack_Customer");
+							
 							_guestReceivedBurgers[guest] = receivedCount + 1;
 							
 							// 모든 버거를 받았으면 테이블로 보내기

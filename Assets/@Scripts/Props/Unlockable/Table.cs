@@ -283,6 +283,9 @@ public class Table : UnlockableBase
 			return;
 
 		_trashPile.PileToTray(wc.Tray);
+		
+		// 쓰레기를 주울 때 사운드 재생
+		SoundManager.Instance.PlaySFX("SFX_Trash_Stack");
 	}
 
 	void OnMoneyInteraction(WorkerController wc)
@@ -290,7 +293,7 @@ public class Table : UnlockableBase
 		_moneyPile.DespawnObjectWithJump(wc.transform.position, () =>
 		{
 			// TODO : ADD MONEY
-			GameManager.Instance.Money += 100;
+			Utils.ApplyMoneyChange(100);
 		});
 	}
 	#endregion

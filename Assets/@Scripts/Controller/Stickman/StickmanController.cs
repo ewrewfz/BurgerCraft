@@ -33,6 +33,10 @@ public class StickmanController : MonoBehaviour
 	protected UI_OrderBubble _orderBubble;
 
 	public TrayController Tray { get; protected set; }
+	
+	// 발걸음 소리 관련
+	protected float _lastFootstepTime = 0f;
+	protected const float FOOTSTEP_INTERVAL = 0.5f; // 발걸음 소리 재생 간격
 
 	#region Animator
 	private EAnimState _state = EAnimState.None;
@@ -168,6 +172,21 @@ public class StickmanController : MonoBehaviour
 			{
 				OnArrivedAtDestCallback?.Invoke();
 				OnArrivedAtDestCallback = null;
+			}
+		}
+		
+		// 플레이어가 이동 중일 때만 발걸음 소리 재생 (애니메이션이 Move 상태일 때)
+		if (State == EAnimState.Move && !HasArrivedAtDestination)
+		{
+			// 플레이어인지 확인 (알바생은 제외)
+			if (GetComponent<PlayerController>() != null)
+			{
+				float currentTime = Time.time;
+				if (currentTime - _lastFootstepTime >= FOOTSTEP_INTERVAL)
+				{
+					SoundManager.Instance.PlaySFX("SFX_Footstep");
+					_lastFootstepTime = currentTime;
+				}
 			}
 		}
 	}

@@ -205,6 +205,12 @@ public class PileBase : MonoBehaviour
             go.transform.DOJump(pos, 3, 1, 0.3f);
         else
             go.transform.position = pos;
+        
+        // 버거나 포장박스를 쌓을 때 사운드 재생
+        if (_objectType == EObjectType.Burger)
+        {
+            SoundManager.Instance.PlaySFX("SFX_Stack");
+        }
     }
 
     private GameObject RemoveFromPile()

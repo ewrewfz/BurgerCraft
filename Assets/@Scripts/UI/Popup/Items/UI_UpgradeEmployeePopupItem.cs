@@ -100,6 +100,9 @@ public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 
 		// 돈 소모.
 		GameManager.Instance.Money -= _money;
+		
+		// 업그레이드 버튼 클릭 시 사운드 재생
+		SoundManager.Instance.PlaySFX("SFX_UpgradeButton");
 
 		switch (_type)
 		{

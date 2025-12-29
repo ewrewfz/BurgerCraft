@@ -47,6 +47,12 @@ public class Tutorial : MonoBehaviour
 		if (_state == ETutorialState.None)
 			_state = ETutorialState.CreateFirstTable;
 
+		// 튜토리얼이 완료되지 않은 경우 BGM_Opening 재생 (MainCounterSystem보다 먼저 재생)
+		if (_state != ETutorialState.Done)
+		{
+			SoundManager.Instance.PlayBGM("BGM_Opening");
+		}
+
 		// 가이드 생성
 		CreateGuide();
 
@@ -333,7 +339,6 @@ public class Tutorial : MonoBehaviour
 
 		office.SetUnlockedState(EUnlockedState.Unlocked);
 
-		// "Enjoy Game!" 메시지를 3초간 표시 후 페이드 아웃으로 사라지게 하기
 		yield return Utils.ShowTutorialToastMessage("Enjoy Game!", 3f, 0.5f);
 
 		yield return null;

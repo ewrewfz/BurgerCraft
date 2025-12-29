@@ -145,6 +145,12 @@ public static class Utils
 		// 실제 금액 반영 (이벤트도 여기서 발생)
 		GameManager.Instance.Money = target;
 
+		// 돈이 증가할 때만 사운드 재생
+		if (delta > 0 && SoundManager.Instance != null)
+		{
+			SoundManager.Instance.PlaySFX("SFX_Money_Get");
+		}
+
 		// UI 애니메이션
 		if (animate && GameManager.Instance.GameSceneUI != null)
 		{

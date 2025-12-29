@@ -44,6 +44,33 @@ public class MainCounterSystem : SystemBase
         }
     }
 
+    private void Start()
+    {
+        // 튜토리얼이 완료된 경우에만 BGM_Playing 재생 (Tutorial.SetInfo() 이후에 실행)
+        Tutorial tutorial = GetComponent<Tutorial>();
+        if (tutorial != null)
+        {
+            Restaurant restaurant = GetComponent<Restaurant>();
+            if (restaurant != null && SaveManager.Instance != null)
+            {
+                int stageNum = restaurant.StageNum;
+                if (stageNum < SaveManager.Instance.SaveData.Restaurants.Count)
+                {
+                    RestaurantData restaurantData = SaveManager.Instance.SaveData.Restaurants[stageNum];
+                    if (restaurantData != null && restaurantData.TutorialState == ETutorialState.Done)
+                    {
+                        SoundManager.Instance.PlayBGM("BGM_Playing");
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Tutorial 컴포넌트가 없으면 바로 재생 (튜토리얼이 없는 경우)
+            SoundManager.Instance.PlayBGM("BGM_Playing");
+        }
+    }
+
     private void Update()
     {
         foreach (WorkerController worker in Workers)

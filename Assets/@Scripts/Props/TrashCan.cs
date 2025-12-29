@@ -25,6 +25,12 @@ public class TrashCan : MonoBehaviour
 		if (t == null)
 			return;
 
+		// 쓰레기를 버릴 때 사운드 재생
+		if (type == EObjectType.Trash)
+		{
+			SoundManager.Instance.PlaySFX("SFX_Trash_Throw");
+		}
+
 		t.DOJump(transform.position, 1f, 1, 0.5f)
 			.OnComplete(() =>
 			{
