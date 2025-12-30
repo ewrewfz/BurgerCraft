@@ -104,7 +104,12 @@ public class Table : UnlockableBase
 				guest.GuestState = EGuestState.Eating;
 				guest.transform.rotation = Chairs[i].rotation;
 
-				_burgerPile.TrayToPile(guest.Tray);
+				// 손님의 주문 개수만큼 버거를 테이블에 놓기
+				int orderCount = _guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 1;
+				for (int j = 0; j < orderCount && guest.Tray.ItemCount > 0; j++)
+				{
+					_burgerPile.TrayToPile(guest.Tray);
+				}
 			}
 
 			_eatingTimeRemaining = Random.Range(5, 11);
@@ -118,9 +123,15 @@ public class Table : UnlockableBase
 
 			_eatingTimeRemaining = 0;
 
-			// 버거 제거.
-			for (int i = 0; i < Guests.Count; i++)
-				_burgerPile.DespawnObject();
+			// 버거 제거. (손님별 주문 개수만큼 제거)
+			foreach (GuestController guest in Guests)
+			{
+				int orderCount = _guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 1;
+				for (int i = 0; i < orderCount; i++)
+				{
+					_burgerPile.DespawnObject();
+				}
+			}
 
 			// 쓰레기 생성. (손님별 주문 개수 합산)
 			SpawnTrashRemaining = 0;

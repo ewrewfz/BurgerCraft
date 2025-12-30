@@ -34,10 +34,6 @@ public class GameManager : Singleton<GameManager>
             BroadcastEvent(EEventType.MoneyChanged);
         }
     }
-    
-    // 일시정지 관련
-    private bool _isPaused = false;
-    public bool IsPaused => _isPaused;
 
     private void Start()
     {
