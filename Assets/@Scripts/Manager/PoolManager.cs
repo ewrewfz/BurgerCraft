@@ -156,8 +156,8 @@ public class PoolManager : Singleton<PoolManager>
 
 	private void CreatePool(GameObject original)
 	{
-		// 팝업인지 확인 (이름에 "Popup"이 포함되어 있으면 팝업으로 간주)
-		bool isPopup = original.name.Contains("Popup");
+		// 팝업인지 확인 (이름에 "Popup"이 포함되어 있거나 UI_SoundSetting 같은 팝업 UI면 팝업으로 간주)
+		bool isPopup = original.name.Contains("Popup") || original.name == "UI_SoundSetting";
 		
 		// 팝업이면 PopupPool에 직접 배치
 		Transform root = isPopup ? GetPopupPool() : null;

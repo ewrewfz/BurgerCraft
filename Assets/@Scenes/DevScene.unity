@@ -3317,6 +3317,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: UI_GameScene
       objectReference: {fileID: 0}
+    - target: {fileID: 2932317819774262851, guid: eedaf2870c2ab6b488d2042cfabb1eef, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6003111559126385941, guid: eedaf2870c2ab6b488d2042cfabb1eef, type: 3}
+      propertyPath: _soundSettingPrefab
+      value: 
+      objectReference: {fileID: 2471965070345647310, guid: 7996086f43f341645b05cbbc04b59fe0, type: 3}
     - target: {fileID: 8212673808067421213, guid: eedaf2870c2ab6b488d2042cfabb1eef, type: 3}
       propertyPath: m_Pivot.x
       value: 0

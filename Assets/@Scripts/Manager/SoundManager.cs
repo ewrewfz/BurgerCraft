@@ -85,6 +85,9 @@ public class SoundManager : Singleton<SoundManager>
     
     protected void Awake()
     {
+        // 저장된 볼륨 설정 로드 (게임 시작 시 자동 로드)
+        LoadVolumeSettings();
+        
         // 오디오 소스 초기화
         InitializeAudioSources();
         

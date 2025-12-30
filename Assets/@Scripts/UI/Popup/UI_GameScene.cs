@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using static Define;
 using DG.Tweening;
+using UnityEngine.UI;
 
 public class UI_GameScene : MonoBehaviour
 {
@@ -11,9 +12,20 @@ public class UI_GameScene : MonoBehaviour
 	[SerializeField]
 	TextMeshProUGUI _toastMessageText;
 
+	[SerializeField]
+	Button SettingButton;
+
+	[SerializeField]
+	private GameObject _soundSettingPrefab;
+
 	private bool _isMoneyAnimating = false;
 
-	private void OnEnable()
+    private void Awake()
+    {
+		SettingButton.onClick.AddListener(OnClickSettingButton);
+    }
+
+    private void OnEnable()
 	{
 		RefreshUI();
 		GameManager.Instance.AddEventListener(EEventType.MoneyChanged, RefreshUI);
@@ -45,29 +57,6 @@ public class UI_GameScene : MonoBehaviour
 	}
 
 	private Tween _moneyTween;
-
-	/// <summary>
-	/// 소지금 변경(증가/감소) + 애니메이션을 한번에 처리
-	/// </summary>
-	/// <param name="delta">증가/감소 값. 감소는 음수.</param>
-	/// <param name="duration">애니메이션 시간</param>
-	/// <param name="clampZero">0 미만으로 내려가지 않도록 클램프할지 여부</param>
-	public void ApplyMoneyChange(long delta, float duration = 1f, bool clampZero = true)
-	{
-		if (GameManager.Instance == null || _moneyCountText == null)
-			return;
-
-		long before = GameManager.Instance.Money;
-		long target = before + delta;
-		if (clampZero && target < 0)
-			target = 0;
-
-		// 실제 금액 반영 (이벤트도 여기서 발생)
-		GameManager.Instance.Money = target;
-
-		// UI 애니메이션
-		AnimateMoney(before, target, duration);
-	}
 
 	/// <summary>
 	/// 소지금 감소 애니메이션 효과
@@ -146,5 +135,44 @@ public class UI_GameScene : MonoBehaviour
 	public TextMeshProUGUI GetToastMessageText()
 	{
 		return _toastMessageText;
+	}
+
+	private UI_SoundSetting _currentSoundSettingPopup;
+
+	private void OnClickSettingButton()
+	{
+		// 이미 열려있으면 닫기
+		if (_currentSoundSettingPopup != null && _currentSoundSettingPopup.gameObject.activeSelf)
+		{
+			_currentSoundSettingPopup.Hide();
+			return;
+		}
+
+		// PoolManager가 null이면 생성 불가
+		if (PoolManager.Instance == null)
+		{
+			Debug.LogWarning("[UI_GameScene] PoolManager.Instance가 null입니다.");
+			return;
+		}
+
+		// 팝업 생성 (PoolManager 사용)
+		GameObject popupObj = PoolManager.Instance.Pop(_soundSettingPrefab);
+		if (popupObj == null)
+		{
+			Debug.LogWarning("[UI_GameScene] PoolManager.Pop()이 null을 반환했습니다.");
+			return;
+		}
+
+		// UI_SoundSetting 컴포넌트 가져오기
+		_currentSoundSettingPopup = popupObj.GetComponent<UI_SoundSetting>();
+		if (_currentSoundSettingPopup == null)
+		{
+			Debug.LogWarning("[UI_GameScene] UI_SoundSetting 컴포넌트를 찾을 수 없습니다.");
+			PoolManager.Instance.Push(popupObj);
+			return;
+		}
+
+		// 팝업 표시
+		_currentSoundSettingPopup.Show();
 	}
 }
