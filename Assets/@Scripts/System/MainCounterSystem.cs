@@ -42,6 +42,57 @@ public class MainCounterSystem : SystemBase
         {
             Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
         }
+
+        // _levelUnlockData가 비어있으면 Tables 리스트를 기반으로 자동 등록
+        if (_levelUnlockData == null || _levelUnlockData.Count == 0)
+        {
+            AutoRegisterTables();
+        }
+    }
+
+    /// <summary>
+    /// Tables 리스트를 기반으로 레벨별 프랍 언락 데이터를 자동으로 등록합니다.
+    /// 첫 번째 테이블은 레벨 1, 두 번째 테이블은 레벨 2... 이런 식으로 등록됩니다.
+    /// </summary>
+    private void AutoRegisterTables()
+    {
+        if (Tables == null || Tables.Count == 0)
+            return;
+
+        _levelUnlockData = new List<LevelUnlockData>();
+        
+        // Tables 리스트의 각 테이블을 순서대로 레벨별로 등록
+        // 첫 번째 테이블은 레벨 2부터 시작 (레벨 1은 기본 테이블로 가정)
+        for (int i = 0; i < Tables.Count; i++)
+        {
+            if (Tables[i] != null)
+            {
+                LevelUnlockData unlockData = new LevelUnlockData
+                {
+                    Level = i + 2, // 레벨 2부터 시작 (레벨 1은 기본)
+                    Prop = Tables[i] as UnlockableBase
+                };
+                _levelUnlockData.Add(unlockData);
+            }
+        }
+    }
+
+    private void OnEnable()
+    {
+        // 레벨별 프랍 언락 체크를 위한 이벤트 리스너 등록
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddEventListener(EEventType.ExpChanged, OnExpChanged);
+        }
+    }
+
+    private void OnDisable()
+    {
+        // 이벤트 리스너 제거
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.RemoveEventListener(EEventType.ExpChanged, OnExpChanged);
+        }
     }
 
     private void Start()
@@ -356,6 +407,118 @@ public class MainCounterSystem : SystemBase
         }
 
         return false;
+    }
+
+    // 레벨별 언락할 프랍 정의 (하드코딩)
+    // 레벨을 키로, 언락할 프랍의 위치와 프리팹을 값으로 사용
+    [SerializeField]
+    private List<LevelUnlockData> _levelUnlockData = new List<LevelUnlockData>();
+
+    [System.Serializable]
+    public class LevelUnlockData
+    {
+        public int Level; // 언락할 레벨
+        public Vector3 Position; // 프랍을 생성할 위치
+        public GameObject PropPrefab; // 생성할 프랍 프리팹 (또는 기존 프랍 참조)
+        public UnlockableBase Prop; // 기존 씬에 있는 프랍 참조 (Prefab이 null일 때 사용)
+        public long UnlockCost = 300; // 언락 비용
+    }
+
+    /// <summary>
+    /// 경험치 변경 시 호출됩니다. 레벨에 따라 프랍을 언락합니다.
+    /// </summary>
+    private void OnExpChanged()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.Restaurant == null)
+            return;
+
+        int currentLevel = GameManager.Instance.Level;
+        CheckAndUnlockPropsByLevel(currentLevel);
+    }
+
+    /// <summary>
+    /// 레벨에 따라 프랍을 언락합니다.
+    /// _levelUnlockData에서 정의된 레벨별 프랍을 언락합니다.
+    /// </summary>
+    private void CheckAndUnlockPropsByLevel(int level)
+    {
+        if (_levelUnlockData == null || _levelUnlockData.Count == 0)
+            return;
+
+        // 현재 레벨에 해당하는 언락 데이터 찾기
+        foreach (var unlockData in _levelUnlockData)
+        {
+            if (unlockData.Level == level)
+            {
+                UnlockableBase prop = GetOrCreateProp(unlockData);
+                if (prop != null)
+                {
+                    // 프랍이 Hidden 상태면 ProcessingConstruction으로 변경
+                    if (prop.State == EUnlockedState.Hidden)
+                    {
+                        prop.SetUnlockedState(EUnlockedState.ProcessingConstruction);
+                        
+                        // UI_ConstructionArea에 비용 설정
+                        if (prop.ConstructionArea != null)
+                        {
+                            prop.ConstructionArea.TotalUpgradeMoney = unlockData.UnlockCost;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 언락 데이터에서 프랍을 가져오거나 생성합니다.
+    /// </summary>
+    private UnlockableBase GetOrCreateProp(LevelUnlockData unlockData)
+    {
+        // 기존 프랍 참조가 있으면 사용
+        if (unlockData.Prop != null)
+        {
+            return unlockData.Prop;
+        }
+
+        // 프리팹이 있으면 위치에 생성
+        if (unlockData.PropPrefab != null)
+        {
+            GameObject propObj = Instantiate(unlockData.PropPrefab, unlockData.Position, Quaternion.identity);
+            UnlockableBase prop = propObj.GetComponent<UnlockableBase>();
+            
+            // 생성된 프랍을 Restaurant의 Props 리스트에 추가
+            Restaurant restaurant = GetComponent<Restaurant>();
+            if (restaurant != null && prop != null)
+            {
+                // SaveData에 UnlockableStateData 추가
+                if (SaveManager.Instance != null && SaveManager.Instance.SaveData != null)
+                {
+                    int stageNum = restaurant.StageNum;
+                    if (stageNum >= 0 && stageNum < SaveManager.Instance.SaveData.Restaurants.Count)
+                    {
+                        RestaurantData restaurantData = SaveManager.Instance.SaveData.Restaurants[stageNum];
+                        if (restaurantData.UnlockableStates == null)
+                        {
+                            restaurantData.UnlockableStates = new List<UnlockableStateData>();
+                        }
+                        restaurantData.UnlockableStates.Add(new UnlockableStateData
+                        {
+                            State = EUnlockedState.Hidden,
+                            SpentMoney = 0
+                        });
+                        
+                        // 프랍에 상태 데이터 설정
+                        prop.SetInfo(restaurantData.UnlockableStates[restaurantData.UnlockableStates.Count - 1]);
+                    }
+                }
+                
+                restaurant.Props.Add(prop);
+            }
+            
+            return prop;
+        }
+
+        return null;
     }
     #endregion
 }

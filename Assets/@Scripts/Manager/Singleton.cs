@@ -20,10 +20,18 @@ public class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 
                     _instance = t;
                 }
-                DontDestroyOnLoad(_instance.gameObject);
-
+                
             }
             return _instance;
         }
+    }
+
+    /// <summary>
+    /// 씬 전환 시 파괴되어야 하는지 여부를 반환합니다.
+    /// true를 반환하면 DontDestroyOnLoad가 적용되지 않습니다.
+    /// </summary>
+    protected virtual bool ShouldDestroyOnLoad()
+    {
+        return false; // 기본값: DontDestroyOnLoad 적용
     }
 }

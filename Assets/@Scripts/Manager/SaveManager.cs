@@ -30,6 +30,10 @@ public class RestaurantData
 	public int WorkerBoosterLevel = 0; // Worker Booster 레벨 (0~3)
 	public int WorkerSpeedLevel = 0; // Worker Speed 레벨 (0~3)
 
+	// 경험치/레벨 시스템
+	public int Experience = 0; // 현재 경험치
+	public int Level = 1; // 현재 레벨 (시작 레벨 1)
+
 	// 프랍들.
 	public ETutorialState TutorialState = ETutorialState.None;
 	public List<UnlockableStateData> UnlockableStates;

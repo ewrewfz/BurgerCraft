@@ -582,6 +582,12 @@ public class Counter : UnlockableBase
 				// 모든 버거를 받았으면 테이블로 보내기
 				if (_guestReceivedBurgers[guest] >= orderCount)
 				{
+					// 경험치 추가 (손님이 버거를 받아서 테이블로 가면 경험치 +1)
+					if (GameManager.Instance != null)
+					{
+						GameManager.Instance.AddExperience(EXP_PER_GUEST);
+					}
+					
 					SendGuestToTable(guest);
 				}
 			}
@@ -979,6 +985,12 @@ public class Counter : UnlockableBase
 							// 모든 버거를 받았으면 테이블로 보내기
 							if (_guestReceivedBurgers[guest] >= orderCount)
 							{
+								// 경험치 추가 (손님이 버거를 받아서 테이블로 가면 경험치 +1)
+								if (GameManager.Instance != null)
+								{
+									GameManager.Instance.AddExperience(EXP_PER_GUEST);
+								}
+								
 								SendGuestToTable(guest);
 							}
 						}

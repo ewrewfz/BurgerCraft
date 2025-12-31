@@ -11,6 +11,7 @@ public static class Define
         UnlockProp,
         WorkerBoosterUpgraded,
         WorkerSpeedUpgraded,
+        ExpChanged,
 
         MaxCount
     }
@@ -86,6 +87,11 @@ public static class Define
     public const int MAX_WORKER_SPEED_LEVEL = 3; // 최대 스피드 레벨
     public const float WORKER_SPEED_INCREASE = 0.3f; // 레벨당 속도 증가량
     public const float BASE_WORKER_MOVE_SPEED = 3f; // 기본 이동 속도
+    
+    // 경험치/레벨 시스템 관련 상수
+    public const int MAX_LEVEL = 20; // 최대 레벨
+    public const int EXP_PER_LEVEL = 2; // 레벨당 필요 경험치 (테스트용 고정값)
+    public const int EXP_PER_GUEST = 1; // 손님당 주는 경험치 (테스트용 고정값)
     
     public static Vector3 WORKER_SPAWN_POS = new Vector3(24.33f, 0, 21.42f);
     public static Vector3 GUEST_LEAVE_POS = new Vector3(0, 0, 0);

@@ -18,22 +18,81 @@ public class UI_GameScene : MonoBehaviour
 	[SerializeField]
 	private GameObject _soundSettingPrefab;
 
+	[SerializeField]
+	private Slider _expSlider;
+
+	[SerializeField]
+	private TextMeshProUGUI _levelText;
+
 	private bool _isMoneyAnimating = false;
+	private int _previousLevel = 1; // 이전 레벨 추적 (레벨업 감지용)
+	private Tween _expSliderTween; // 슬라이더 애니메이션 트윈
 
     private void Awake()
     {
 		SettingButton.onClick.AddListener(OnClickSettingButton);
+		
+		// 슬라이더와 레벨 텍스트 자동 찾기
+		if (_expSlider == null)
+		{
+			_expSlider = Utils.FindChild<Slider>(gameObject, "ExpSlider", true);
+		}
+		
+		if (_levelText == null)
+		{
+			// LevelText는 ExpSlider의 자식인 LevelIconImage의 자식으로 있을 수 있음
+			GameObject levelIconImage = Utils.FindChild(gameObject, "LevelIconImage", true);
+			if (levelIconImage != null)
+			{
+				_levelText = Utils.FindChild<TextMeshProUGUI>(levelIconImage, "LevelText", true);
+			}
+			
+			// LevelIconImage를 못 찾았으면 직접 찾기
+			if (_levelText == null)
+			{
+				_levelText = Utils.FindChild<TextMeshProUGUI>(gameObject, "LevelText", true);
+			}
+		}
     }
 
     private void OnEnable()
 	{
 		RefreshUI();
+		
+		// GameManager와 Restaurant가 초기화된 후에만 경험치 UI 업데이트
+		if (GameManager.Instance != null && GameManager.Instance.Restaurant != null)
+		{
+			RefreshExpUI();
+			_previousLevel = GameManager.Instance.Level;
+		}
+		
 		GameManager.Instance.AddEventListener(EEventType.MoneyChanged, RefreshUI);
+		GameManager.Instance.AddEventListener(EEventType.ExpChanged, RefreshExpUI);
+		
+		// 초기화가 완료되면 경험치 UI 업데이트
+		StartCoroutine(CoWaitForInitialization());
+	}
+
+	private System.Collections.IEnumerator CoWaitForInitialization()
+	{
+		// GameManager와 Restaurant가 초기화될 때까지 대기
+		while (GameManager.Instance == null || GameManager.Instance.Restaurant == null)
+		{
+			yield return null;
+		}
+		
+		// 초기화 완료 후 경험치 UI 업데이트
+		RefreshExpUI();
+		_previousLevel = GameManager.Instance.Level;
 	}
 
 	private void OnDisable()
 	{
 		GameManager.Instance.RemoveEventListener(EEventType.MoneyChanged, RefreshUI);
+		GameManager.Instance.RemoveEventListener(EEventType.ExpChanged, RefreshExpUI);
+		
+		// 슬라이더 애니메이션 중지
+		_expSliderTween?.Kill();
 	}
 
 	public void RefreshUI()
@@ -43,6 +102,105 @@ public class UI_GameScene : MonoBehaviour
 
 		long money = GameManager.Instance.Money;
 		_moneyCountText.text = Utils.GetMoneyText(money);
+	}
+
+	/// <summary>
+	/// 경험치/레벨 UI를 업데이트합니다.
+	/// </summary>
+	public void RefreshExpUI()
+	{
+		if (GameManager.Instance == null || GameManager.Instance.Restaurant == null)
+			return;
+
+		int experience = GameManager.Instance.Experience;
+		int level = GameManager.Instance.Level;
+
+		// 레벨 텍스트 업데이트
+		if (_levelText != null)
+		{
+			_levelText.text = level.ToString();
+		}
+
+		// 경험치 슬라이더 업데이트
+		if (_expSlider != null)
+		{
+			// 경험치를 0~1 범위로 정규화 (레벨당 필요 경험치가 2이므로)
+			float targetValue = Mathf.Clamp01((float)experience / EXP_PER_LEVEL);
+			
+			// 레벨업 감지 (레벨이 변경되었을 때만 슬라이더 리셋)
+			if (level > _previousLevel)
+			{
+				// 레벨업 시 슬라이더 초기화 (0으로 리셋)
+				_expSliderTween?.Kill();
+				_expSlider.value = 0f;
+				_previousLevel = level;
+				
+				// 레벨업 후 남은 경험치가 있으면 다시 애니메이션
+				if (experience > 0)
+				{
+					float remainingExp = Mathf.Clamp01((float)experience / EXP_PER_LEVEL);
+					AnimateExpSlider(0f, remainingExp);
+				}
+			}
+			else
+			{
+				// 기존 애니메이션 중지
+				_expSliderTween?.Kill();
+				
+				// 현재 슬라이더 값에서 목표 값으로 부드럽게 애니메이션
+				float currentValue = _expSlider.value;
+				AnimateExpSlider(currentValue, targetValue);
+			}
+			
+			// 이전 레벨 업데이트 (항상 추적)
+			_previousLevel = level;
+		}
+		else
+		{
+			// 슬라이더가 null인 경우 디버그 로그
+			Debug.LogWarning("[UI_GameScene] _expSlider가 null입니다. Inspector에서 할당되었는지 확인하세요.");
+		}
+	}
+
+	/// <summary>
+	/// 경험치 슬라이더를 부드럽게 애니메이션합니다.
+	/// 슬라이더가 1.0에 도달하면 레벨업을 처리합니다.
+	/// </summary>
+	private void AnimateExpSlider(float fromValue, float toValue)
+	{
+		if (_expSlider == null)
+			return;
+
+		float currentValue = fromValue;
+		_expSliderTween = DOTween.To(
+			() => currentValue,
+			x => 
+			{
+				currentValue = x;
+				_expSlider.value = x;
+				
+				// 슬라이더가 1.0에 도달하면 레벨업 처리
+				if (x >= 1.0f && GameManager.Instance != null)
+				{
+					// 레벨업 처리 (경험치 소모 및 레벨 증가)
+					GameManager.Instance.ProcessLevelUp();
+					
+					// 슬라이더를 0으로 리셋하고 남은 경험치로 다시 애니메이션
+					_expSliderTween?.Kill();
+					_expSlider.value = 0f;
+					
+					// 남은 경험치 확인
+					int remainingExp = GameManager.Instance.Experience;
+					if (remainingExp > 0)
+					{
+						float remainingExpNormalized = Mathf.Clamp01((float)remainingExp / EXP_PER_LEVEL);
+						AnimateExpSlider(0f, remainingExpNormalized);
+					}
+				}
+			},
+			toValue,
+			0.3f // 0.3초 동안 부드럽게 증가
+		).SetEase(Ease.OutQuad);
 	}
 
 	public void PulseMoneyText()
