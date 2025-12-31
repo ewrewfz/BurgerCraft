@@ -1,7 +1,7 @@
 {
   "buildFiles": [
-    "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\Mono2x\\Gradle\\unityLibrary\\src\\main\\cpp\\CMakeLists.txt",
-    "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\Mono2x\\Gradle\\unityLibrary\\src\\main\\cpp\\GameActivity\\CMakeLists.txt"
+    "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\IL2CPP\\Gradle\\unityLibrary\\src\\main\\cpp\\CMakeLists.txt",
+    "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\IL2CPP\\Gradle\\unityLibrary\\src\\main\\cpp\\GameActivity\\CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
     [
@@ -22,7 +22,7 @@
       "toolchain": "toolchain",
       "abi": "armeabi-v7a",
       "artifactName": "game",
-      "output": "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\Mono2x\\Gradle\\unityLibrary\\build\\intermediates\\cxx\\RelWithDebInfo\\4i3vi5b4\\obj\\armeabi-v7a\\libgame.so",
+      "output": "C:\\Users\\mpole\\Desktop\\Git\\BurgerCraft\\Library\\Bee\\Android\\Prj\\IL2CPP\\Gradle\\unityLibrary\\build\\intermediates\\cxx\\RelWithDebInfo\\4i3vi5b4\\obj\\armeabi-v7a\\libgame.so",
       "runtimeFiles": []
     }
   },
