@@ -180,12 +180,8 @@ public class SoundManager : Singleton<SoundManager>
             }
         }
         
-        Debug.Log($"[SoundManager] 캐싱 완료 - BGM: {_bgmClips.Count}개, SFX: {_sfxClips.Count}개");
-        
         // 캐싱 완료 플래그 설정
         _isCachingComplete = true;
-        
-        // 핸들은 해제하지 않음 (캐시로 유지)
     }
     
     /// <summary>

@@ -31,28 +31,6 @@ public class UI_GameScene : MonoBehaviour
     private void Awake()
     {
 		SettingButton.onClick.AddListener(OnClickSettingButton);
-		
-		// 슬라이더와 레벨 텍스트 자동 찾기
-		if (_expSlider == null)
-		{
-			_expSlider = Utils.FindChild<Slider>(gameObject, "ExpSlider", true);
-		}
-		
-		if (_levelText == null)
-		{
-			// LevelText는 ExpSlider의 자식인 LevelIconImage의 자식으로 있을 수 있음
-			GameObject levelIconImage = Utils.FindChild(gameObject, "LevelIconImage", true);
-			if (levelIconImage != null)
-			{
-				_levelText = Utils.FindChild<TextMeshProUGUI>(levelIconImage, "LevelText", true);
-			}
-			
-			// LevelIconImage를 못 찾았으면 직접 찾기
-			if (_levelText == null)
-			{
-				_levelText = Utils.FindChild<TextMeshProUGUI>(gameObject, "LevelText", true);
-			}
-		}
     }
 
     private void OnEnable()

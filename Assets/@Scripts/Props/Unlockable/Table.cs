@@ -157,6 +157,13 @@ public class Table : UnlockableBase
 				guest.GuestState = EGuestState.Leaving;
 				guest.SetDestination(Define.GUEST_LEAVE_POS, () =>
 				{
+					// PickupGuestPool에서 GuestPool로 다시 이동
+					GameObject guestPool = GameObject.Find("@GuestPool");
+					if (guestPool != null)
+					{
+						guest.transform.SetParent(guestPool.transform);
+					}
+					
 					GameManager.Instance.DespawnGuest(guest.gameObject);
 				});
 			}

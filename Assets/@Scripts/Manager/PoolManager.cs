@@ -118,6 +118,13 @@ internal class Pool
 	private void OnRelease(GameObject go)
 	{
 		go.SetActive(false);
+		
+		// 손님이 PickupGuestPool에 있으면 GuestPool로 다시 이동
+		if (go.name.Contains("Guest") && _root != null)
+		{
+			// 풀 루트로 다시 이동 (GuestPool)
+			go.transform.SetParent(Root);
+		}
 	}
 
 	private void OnDestroy(GameObject go)

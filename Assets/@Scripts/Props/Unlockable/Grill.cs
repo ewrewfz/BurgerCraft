@@ -43,6 +43,24 @@ public class Grill : UnlockableBase
 	// Key: 게스트 인스턴스 ID, Value: 주문 번호 (문자열)
 	private Dictionary<int, string> _guestIdOrderNumberMapping = new Dictionary<int, string>();
 	
+	// 알바생이 현재 조리 중인 주문 추적 (플레이어가 조리하지 못하도록)
+	private Define.BurgerRecipe? _workerCookingOrder = null;
+	public bool IsWorkerCooking => _workerCookingOrder.HasValue;
+	public Define.BurgerRecipe? WorkerCookingOrder => _workerCookingOrder;
+	
+	// 플레이어가 현재 조리 중인 주문 추적 (알바생이 조리하지 못하도록)
+	private Define.BurgerRecipe? _playerCookingOrder = null;
+	public bool IsPlayerCooking => _playerCookingOrder.HasValue;
+	public Define.BurgerRecipe? PlayerCookingOrder => _playerCookingOrder;
+	
+	/// <summary>
+	/// 플레이어가 조리 중인 주문을 설정합니다.
+	/// </summary>
+	public void SetPlayerCookingOrder(Define.BurgerRecipe? recipe)
+	{
+		_playerCookingOrder = recipe;
+	}
+	
 	// 점멸 효과 관련
 	private Renderer _grillRenderer;
 	private Material _originalMaterial;
@@ -626,8 +644,6 @@ public class Grill : UnlockableBase
 
 	private void OnGrillTriggerStart(WorkerController wc)
 	{
-		Debug.Log($"[Grill] OnGrillTriggerStart 호출: Worker={wc?.name}, IsPlayer={wc?.GetComponent<PlayerController>() != null}");
-		
 		if (wc == null)
 			return;
 		
@@ -747,43 +763,84 @@ public class Grill : UnlockableBase
 			return;
 		}
 		
+		// 주문 큐에서 플레이어가 조리하지 않는 첫 번째 주문 가져오기
+		Define.BurgerRecipe? orderNullable = null;
+		
+		// _deliveredOrderQueue에서 플레이어가 조리하지 않는 주문 찾기
+		if (_deliveredOrderQueue.Count > 0)
+		{
+			foreach (var orderItem in _deliveredOrderQueue)
+			{
+				// 플레이어가 조리 중인 주문이면 건너뛰기
+				if (_playerCookingOrder.HasValue && UI_OrderSystem.IsMatch(orderItem, _playerCookingOrder.Value))
+				{
+					continue;
+				}
+				orderNullable = orderItem;
+				break;
+			}
+		}
+		
+		// _deliveredOrderQueue에서 찾지 못했으면 _orderQueue에서 찾기
+		if (!orderNullable.HasValue && _orderQueue.Count > 0)
+		{
+			foreach (var orderItem in _orderQueue)
+			{
+				// 플레이어가 조리 중인 주문이면 건너뛰기
+				if (_playerCookingOrder.HasValue && UI_OrderSystem.IsMatch(orderItem, _playerCookingOrder.Value))
+				{
+					continue;
+				}
+				orderNullable = orderItem;
+				break;
+			}
+		}
+		
+		// 주문이 없으면 진행바 비활성화
+		if (!orderNullable.HasValue)
+		{
+			progressbar.gameObject.SetActive(false);
+			return;
+		}
+		
+		Define.BurgerRecipe order = orderNullable.Value;
+		
+		if (order.Bread == Define.EBreadType.None)
+		{
+			progressbar.gameObject.SetActive(false);
+			return;
+		}
+		
+		// 알바생이 조리 중인 주문으로 설정 (플레이어가 조리하지 못하도록)
+		_workerCookingOrder = order;
+		
+		// UI_CookingPopup에 알림 (Working_AI 활성화)
+		UI_CookingPopup cookingPopup = FindObjectOfType<UI_CookingPopup>();
+		if (cookingPopup != null && cookingPopup.gameObject.activeInHierarchy)
+		{
+			cookingPopup.SetReceiptWorkingAI(order, true);
+		}
+		
 		// 진행바 활성화
 		progressbar.gameObject.SetActive(true);
 		
 		// 진행바 완료 콜백 설정
 		progressbar.OnProgressComplete = () =>
 		{
-			// 주문 큐에서 첫 번째 주문 가져오기
-			Define.BurgerRecipe? orderNullable = null;
-			if (_deliveredOrderQueue.Count > 0)
-			{
-				orderNullable = _deliveredOrderQueue[0];
-			}
-			else if (_orderQueue.Count > 0)
-			{
-				orderNullable = _orderQueue[0];
-			}
-			
-			// 주문이 없으면 진행바 비활성화
-			if (!orderNullable.HasValue)
-			{
-				progressbar.gameObject.SetActive(false);
-				return;
-			}
-			
-			Define.BurgerRecipe order = orderNullable.Value;
-			
-			if (order.Bread == Define.EBreadType.None)
-			{
-				progressbar.gameObject.SetActive(false);
-				return;
-			}
-			
 			// 주문 번호 가져오기 (레시피로 조회)
 			string orderNumber = GetOrderNumberByRecipe(order);
 			
 			// 주문 제거
 			RemoveOrder(order);
+			
+			// 알바생 조리 중인 주문 해제
+			_workerCookingOrder = null;
+			
+			// UI_CookingPopup에 알림 (Working_AI 비활성화)
+			if (cookingPopup != null && cookingPopup.gameObject.activeInHierarchy)
+			{
+				cookingPopup.SetReceiptWorkingAI(order, false);
+			}
 			
 			// 버거 생성 (조리 완료) - BurgerPile의 SpawnObjectWithOrderNumber 사용
 			if (_burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)

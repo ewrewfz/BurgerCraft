@@ -136,6 +136,9 @@ public class UI_CookingPopup : MonoBehaviour
         // _deliveredOrderQueue의 데이터를 직접 사용하여 영수증 생성 (최대 3개까지)
         // _orderQueue는 사용하지 않음 - _deliveredOrderQueue만 사용
         RefreshReceiptsFromDeliveredQueue(orders);
+        
+        // 알바생이 조리 중인 주문인지 확인하고 Working_AI 업데이트
+        UpdateAllReceiptsWorkingAI();
     }
     
     /// <summary>
@@ -181,6 +184,12 @@ public class UI_CookingPopup : MonoBehaviour
             _activeReceipts.Remove(receipt);
             if (_currentReceipt == receipt)
             {
+                // 플레이어가 조리 중인 주문 해제
+                Grill grill = FindObjectOfType<Grill>();
+                if (grill != null)
+                {
+                    grill.SetPlayerCookingOrder(null);
+                }
                 _currentReceipt = null;
             }
             if (receipt != null)
@@ -226,6 +235,66 @@ public class UI_CookingPopup : MonoBehaviour
             if (displayedCount < orderCountInDelivered)
             {
                 AddReceipt(order);
+            }
+            else
+            {
+                // 이미 표시된 Receipt의 Working_AI 상태 업데이트
+                foreach (var receipt in _activeReceipts)
+                {
+                    if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, order))
+                    {
+                        UpdateReceiptWorkingAI(receipt, order);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 모든 Receipt의 Working_AI 상태 업데이트
+        UpdateAllReceiptsWorkingAI();
+    }
+    
+    /// <summary>
+    /// 특정 Receipt의 Working_AI 상태를 업데이트합니다.
+    /// </summary>
+    private void UpdateReceiptWorkingAI(UI_CookingReceipt receipt, Define.BurgerRecipe recipe)
+    {
+        if (receipt == null)
+            return;
+        
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill != null && grill.IsWorkerCooking && grill.WorkerCookingOrder.HasValue)
+        {
+            Define.BurgerRecipe workerOrder = grill.WorkerCookingOrder.Value;
+            if (UI_OrderSystem.IsMatch(recipe, workerOrder))
+            {
+                receipt.SetWorkingAI(true);
+            }
+            else
+            {
+                receipt.SetWorkingAI(false);
+            }
+        }
+        else
+        {
+            receipt.SetWorkingAI(false);
+        }
+    }
+    
+    /// <summary>
+    /// 모든 Receipt의 Working_AI 상태를 업데이트합니다.
+    /// </summary>
+    private void UpdateAllReceiptsWorkingAI()
+    {
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill == null)
+            return;
+        
+        foreach (var receipt in _activeReceipts)
+        {
+            if (receipt != null)
+            {
+                UpdateReceiptWorkingAI(receipt, receipt.Recipe);
             }
         }
     }
@@ -278,11 +347,35 @@ public class UI_CookingPopup : MonoBehaviour
         // 영수증 클릭 이벤트 등록
         receipt.OnReceiptClicked = OnReceiptClicked;
         
+        // 알바생이 조리 중인 주문인지 확인하고 Working_AI 활성화
+        if (grill != null && grill.IsWorkerCooking && grill.WorkerCookingOrder.HasValue)
+        {
+            Define.BurgerRecipe workerOrder = grill.WorkerCookingOrder.Value;
+            if (UI_OrderSystem.IsMatch(recipe, workerOrder))
+            {
+                receipt.SetWorkingAI(true);
+            }
+        }
+        
         _activeReceipts.Add(receipt);
 
         if (_currentReceipt == null)
         {
             SelectReceipt(receipt);
+        }
+    }
+    
+    /// <summary>
+    /// 특정 주문의 Working_AI를 설정합니다.
+    /// </summary>
+    public void SetReceiptWorkingAI(Define.BurgerRecipe recipe, bool isWorking)
+    {
+        foreach (var receipt in _activeReceipts)
+        {
+            if (receipt != null && UI_OrderSystem.IsMatch(receipt.Recipe, recipe))
+            {
+                receipt.SetWorkingAI(isWorking);
+            }
         }
     }
     
@@ -315,6 +408,12 @@ public class UI_CookingPopup : MonoBehaviour
     {
         if (receipt != null && _activeReceipts.Contains(receipt))
         {
+            // 알바생이 조리 중인 주문이면 선택 불가
+            if (receipt.IsWorkingAI)
+            {
+                return; // 선택하지 않음
+            }
+            
             SelectReceipt(receipt);
         }
     }
@@ -341,6 +440,13 @@ public class UI_CookingPopup : MonoBehaviour
         // 선택된 receipt 강조
         _currentReceipt = receipt;
         _currentReceipt.SetSelected(true);
+        
+        // Grill에 플레이어가 조리 중인 주문 설정
+        Grill grill = FindObjectOfType<Grill>();
+        if (grill != null)
+        {
+            grill.SetPlayerCookingOrder(_currentReceipt.Recipe);
+        }
         
         _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
         ResetCurrentBurger();
@@ -437,6 +543,12 @@ public class UI_CookingPopup : MonoBehaviour
         if (_currentReceipt == null)
         {
             Debug.LogWarning("선택된 주문이 없습니다.");
+            return false;
+        }
+        
+        // 알바생이 조리 중인 주문이면 재료 추가 불가
+        if (_currentReceipt.IsWorkingAI)
+        {
             return false;
         }
 
@@ -665,6 +777,18 @@ public class UI_CookingPopup : MonoBehaviour
 
     private void AddIngredientToAssembly(EIngredientType ingredientType, bool isTopBread = false)
     {
+        // 현재 선택된 receipt가 없으면 추가 불가
+        if (_currentReceipt == null)
+        {
+            return;
+        }
+        
+        // 알바생이 조리 중인 주문이면 재료 추가 불가
+        if (_currentReceipt.IsWorkingAI)
+        {
+            return;
+        }
+        
         if (_currentBurgerStack == null)
             CreateBurgerStack();
 
@@ -973,6 +1097,13 @@ public class UI_CookingPopup : MonoBehaviour
             completedRecipe = _currentReceipt.Recipe;
             _activeReceipts.Remove(_currentReceipt);
             Destroy(_currentReceipt.gameObject);
+            
+            // 플레이어가 조리 중인 주문 해제
+            if (grill != null)
+            {
+                grill.SetPlayerCookingOrder(null);
+            }
+            
             _currentReceipt = null;
         }
 
@@ -1235,6 +1366,13 @@ public class UI_CookingPopup : MonoBehaviour
         {
             _activeReceipts.Remove(_currentReceipt);
             Destroy(_currentReceipt.gameObject);
+            
+            // 플레이어가 조리 중인 주문 해제
+            if (grill != null)
+            {
+                grill.SetPlayerCookingOrder(null);
+            }
+            
             _currentReceipt = null;
         }
 
@@ -1271,6 +1409,17 @@ public class UI_CookingPopup : MonoBehaviour
         _isMaxFailReached = true;
 
         // 팝업 정리
+        // 플레이어가 조리 중인 주문 해제
+        if (_currentReceipt != null)
+        {
+            Grill grillInstance = FindObjectOfType<Grill>();
+            if (grillInstance != null)
+            {
+                grillInstance.SetPlayerCookingOrder(null);
+            }
+            _currentReceipt = null;
+        }
+        
         gameObject.SetActive(false);
         PoolManager.Instance.Push(gameObject);
     }

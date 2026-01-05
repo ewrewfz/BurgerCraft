@@ -701,6 +701,9 @@ MonoBehaviour:
   _moneyCountText: {fileID: 9071067514922698488}
   _toastMessageText: {fileID: 3109778805449085177}
   SettingButton: {fileID: 4225857278243568813}
+  _soundSettingPrefab: {fileID: 2471965070345647310, guid: 7996086f43f341645b05cbbc04b59fe0, type: 3}
+  _expSlider: {fileID: 9090356142741814520}
+  _levelText: {fileID: 2115773167131886037}
 --- !u!1 &3383644002522759845
 GameObject:
   m_ObjectHideFlags: 0

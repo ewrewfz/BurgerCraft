@@ -167,6 +167,61 @@ public class GameManager : Singleton<GameManager>
         UpgradeEmployeePopup = Utils.FindChild<UI_UpgradeEmployeePopup>(gameObject);
         UpgradeEmployeePopup.gameObject.SetActive(false);
         StartCoroutine(CoInitialize());
+        
+        // 프랍 언락 이벤트 리스너 등록
+        AddEventListener(EEventType.UnlockProp, OnPropUnlocked);
+    }
+    
+    /// <summary>
+    /// 프랍 언락 시 호출됩니다. 프랍 상태를 SaveData에 저장합니다.
+    /// </summary>
+    private void OnPropUnlocked()
+    {
+        SavePropsState();
+    }
+    
+    /// <summary>
+    /// 현재 Restaurant의 모든 프랍 상태를 SaveData에 저장합니다.
+    /// </summary>
+    private void SavePropsState()
+    {
+        if (Restaurant == null || SaveData == null || SaveData.Restaurants == null)
+            return;
+            
+        int stageNum = Restaurant.StageNum;
+        if (stageNum < 0 || stageNum >= SaveData.Restaurants.Count)
+            return;
+            
+        RestaurantData restaurantData = SaveData.Restaurants[stageNum];
+        if (restaurantData == null)
+            return;
+            
+        // UnlockableStates 리스트 초기화
+        if (restaurantData.UnlockableStates == null)
+        {
+            restaurantData.UnlockableStates = new List<UnlockableStateData>();
+        }
+        
+        // Restaurant의 모든 프랍 상태를 SaveData에 저장
+        for (int i = 0; i < Restaurant.Props.Count; i++)
+        {
+            UnlockableBase prop = Restaurant.Props[i];
+            if (prop == null)
+                continue;
+                
+            // 리스트 크기가 부족하면 확장
+            while (restaurantData.UnlockableStates.Count <= i)
+            {
+                restaurantData.UnlockableStates.Add(new UnlockableStateData());
+            }
+            
+            // 프랍 상태 저장
+            restaurantData.UnlockableStates[i].State = prop.State;
+            restaurantData.UnlockableStates[i].SpentMoney = prop.SpentMoney;
+        }
+        
+        // 즉시 저장
+        SaveManager.Instance.SaveGame();
     }
     
     public IEnumerator CoInitialize()
@@ -178,6 +233,16 @@ public class GameManager : Singleton<GameManager>
 
         int index = Restaurant.StageNum;
         Restaurant.SetInfo(SaveData.Restaurants[index]);
+
+        // 레벨에 따라 프랍 생성 (레벨업으로 생성된 프랍들)
+        yield return new WaitForEndOfFrame(); // Restaurant 초기화 대기
+        
+        // MainCounterSystem에서 레벨에 따라 프랍 생성 및 상태 로드
+        MainCounterSystem mainCounterSystem = Restaurant.GetComponent<MainCounterSystem>();
+        if (mainCounterSystem != null)
+        {
+            mainCounterSystem.LoadPropsByLevel();
+        }
 
         // 저장된 경험치와 레벨이 이미 SaveData에 있으므로, UI 업데이트를 위해 이벤트 발생
         // (Experience와 Level 프로퍼티는 SaveData에서 직접 읽으므로 별도 설정 불필요)

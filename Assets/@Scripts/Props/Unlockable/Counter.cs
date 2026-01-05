@@ -604,15 +604,6 @@ public class Counter : UnlockableBase
 		// 플레이어인 경우 기존 로직 실행
 		if (wc.GetComponent<PlayerController>() != null)
 		{
-			// 알바생이 이미 작업 중이면 플레이어는 나가게 함
-			if (CurrentCashierWorker != null && CurrentCashierWorker.GetComponent<PlayerController>() == null)
-			{
-				// 알바생이 작업 중이므로 플레이어를 나가게 함
-				Vector3 exitPos = CashierWorkerPos.position - CashierWorkerPos.forward * 1.5f;
-				wc.SetDestination(exitPos);
-				return;
-			}
-			
 			if (orderPopup == null)
 				return;
 
@@ -861,70 +852,6 @@ public class Counter : UnlockableBase
 		_remainingOrderCount = 0;
 	}
 	
-	/// <summary>
-	/// 성공 팝업이 닫힌 후 다음 주문을 받을 수 있는지 확인하고 OrderPopup을 엽니다.
-	/// </summary>
-	public void CheckAndOpenNextOrder(GuestController guest)
-	{
-		// 손님이 주문 큐에 있는지 확인 (아직 모든 주문을 완료하지 않은 경우)
-		if (_queueGuests.Count > 0 && _queueGuests[0] == guest && _remainingOrderCount > 0)
-		{
-			// OrderPopup 다시 열기 (새로운 랜덤 주문)
-			if (orderPopup != null)
-			{
-				GameObject instance = PoolManager.Instance.Pop(orderPopup);
-				UI_OrderPopup popup = instance.GetComponent<UI_OrderPopup>();
-				
-				if (popup != null)
-				{
-					popup.OnOrderComplete += OnOrderComplete;
-					popup.SetCurrentGuest(guest);
-					popup.ShowWithRandomOrder();
-				}
-			}
-		}
-	}
-	
-	/// <summary>
-	/// 대기 중인 주문들이 있는지 확인합니다 (더 이상 사용하지 않음 - Grill에서 직접 관리)
-	/// </summary>
-	// public bool HasPendingOrders()
-	// {
-	// 	return _pendingOrders.Count > 0;
-	// }
-	
-	/// <summary>
-	/// 대기 중인 주문들을 가져옵니다 (더 이상 사용하지 않음 - Grill에서 직접 관리)
-	/// </summary>
-	// public List<Define.BurgerRecipe> GetPendingOrders()
-	// {
-	// 	List<Define.BurgerRecipe> orders = new List<Define.BurgerRecipe>(_pendingOrders);
-	// 	_pendingOrders.Clear();
-	// 	
-	// 	// 주문을 가져갔으므로 점멸 해제 이벤트 호출
-	// 	if (orders.Count > 0)
-	// 	{
-	// 		OnPendingOrdersCleared?.Invoke();
-	// 	}
-	// 	
-	// 	return orders;
-	// }
-	
-	/// <summary>
-	/// 주문 큐가 비워졌을 때 호출되는 이벤트 (더 이상 사용하지 않음)
-	/// </summary>
-	// public static Action OnPendingOrdersCleared;
-	
-	/// <summary>
-	/// 버거를 Counter의 BurgerPile에 추가합니다. (버거는 BurgerPile에서만 관리)
-	/// </summary>
-	public void AddBurgerToPile()
-	{
-		if (_burgerPile != null)
-		{
-			_burgerPile.SpawnObject();
-		}
-	}
 
 	void OnBurgerInteraction(WorkerController wc)
 	{

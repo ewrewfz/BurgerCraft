@@ -437,6 +437,94 @@ public class MainCounterSystem : SystemBase
     }
 
     /// <summary>
+    /// 게임 시작 시 저장된 레벨에 따라 프랍을 생성하고 상태를 불러옵니다.
+    /// </summary>
+    public void LoadPropsByLevel()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.Restaurant == null)
+            return;
+
+        int currentLevel = GameManager.Instance.Level;
+        Restaurant restaurant = GetComponent<Restaurant>();
+        
+        if (restaurant == null || SaveManager.Instance == null || SaveManager.Instance.SaveData == null)
+            return;
+
+        int stageNum = restaurant.StageNum;
+        if (stageNum < 0 || stageNum >= SaveManager.Instance.SaveData.Restaurants.Count)
+            return;
+
+        RestaurantData restaurantData = SaveManager.Instance.SaveData.Restaurants[stageNum];
+        if (restaurantData.UnlockableStates == null)
+        {
+            restaurantData.UnlockableStates = new List<UnlockableStateData>();
+        }
+
+        // 현재 레벨까지의 모든 프랍 생성
+        for (int level = 1; level <= currentLevel; level++)
+        {
+            foreach (var unlockData in _levelUnlockData)
+            {
+                if (unlockData.Level == level)
+                {
+                    UnlockableBase prop = GetOrCreateProp(unlockData);
+                    if (prop != null)
+                    {
+                        // 프리팹으로 생성한 경우 위치 설정
+                        if (unlockData.PropPrefab != null && unlockData.Prop == null)
+                        {
+                            prop.transform.position = unlockData.Position;
+                            
+                            // ConstructionArea 위치도 프랍 위치에 맞춤
+                            if (prop.ConstructionArea != null)
+                            {
+                                prop.ConstructionArea.transform.position = unlockData.Position;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Restaurant.Props가 업데이트되었으므로 다시 수집
+        restaurant.Props = GetComponentsInChildren<UnlockableBase>().ToList();
+
+        // 저장된 상태를 모든 프랍에 적용
+        for (int i = 0; i < restaurant.Props.Count; i++)
+        {
+            UnlockableBase prop = restaurant.Props[i];
+            if (prop == null)
+                continue;
+
+            // UnlockableStates 리스트 확장
+            while (restaurantData.UnlockableStates.Count <= i)
+            {
+                restaurantData.UnlockableStates.Add(new UnlockableStateData());
+            }
+
+            UnlockableStateData savedState = restaurantData.UnlockableStates[i];
+            
+            // 저장된 상태 적용
+            prop.SetInfo(savedState);
+            
+            // UI_ConstructionArea에 비용 설정 (ProcessingConstruction 상태인 경우)
+            if (prop.State == EUnlockedState.ProcessingConstruction)
+            {
+                // 해당 프랍의 UnlockData 찾기
+                LevelUnlockData unlockData = _levelUnlockData.Find(data => 
+                    (data.Prop != null && data.Prop == prop) || 
+                    (data.PropPrefab != null && prop.gameObject.name.Contains(data.PropPrefab.name)));
+                
+                if (unlockData != null && prop.ConstructionArea != null)
+                {
+                    prop.ConstructionArea.TotalUpgradeMoney = unlockData.UnlockCost;
+                    prop.ConstructionArea.RefreshUI();
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 레벨에 따라 프랍을 언락합니다.
     /// _levelUnlockData에서 정의된 레벨별 프랍을 언락합니다.
     /// </summary>

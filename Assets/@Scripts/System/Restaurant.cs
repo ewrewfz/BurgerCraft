@@ -112,8 +112,21 @@ public class Restaurant : MonoBehaviour
 		RestaurantSystems = GetComponentsInChildren<SystemBase>().ToList();
 		Props = GetComponentsInChildren<UnlockableBase>().ToList();
 
+		// UnlockableStates 리스트 초기화
+		if (data.UnlockableStates == null)
+		{
+			data.UnlockableStates = new List<UnlockableStateData>();
+		}
+
+		// 기존 프랍들에 저장된 상태 적용
 		for (int i = 0; i < Props.Count; i++)
 		{
+			// UnlockableStates 리스트 확장
+			while (data.UnlockableStates.Count <= i)
+			{
+				data.UnlockableStates.Add(new UnlockableStateData());
+			}
+
 			UnlockableStateData stateData = data.UnlockableStates[i];
 			Props[i].SetInfo(stateData);
 		}
