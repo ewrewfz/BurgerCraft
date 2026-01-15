@@ -181,29 +181,6 @@ public class Counter : UnlockableBase
 
 		_queueGuests.Add(guest);
 	}
-	
-	/// <summary>
-	/// GuestPool에 손님이 10명 이하면 1명씩 생성합니다.
-	/// </summary>
-	public void CheckAndSpawnGuestIfNeeded()
-	{
-		// GuestPool 게임오브젝트 찾기
-		GameObject guestPool = GameObject.Find("@GuestPool");
-		if (guestPool == null)
-			return;
-		
-		// GuestPool의 자식 개수 확인 (비활성화된 손님들)
-		int guestPoolCount = guestPool.transform.childCount;
-		
-		// 10명 이하면 1명 생성
-		if (guestPoolCount < 10)
-		{
-			GameObject go = GameObject.Instantiate(GameManager.Instance.GuestPrefab);
-			go.transform.SetParent(guestPool.transform);
-			go.SetActive(false);
-			go.name = GameManager.Instance.GuestPrefab.name;
-		}
-	}
 
     /// <summary>
     /// 첫 번째 손님 반환 (주문 큐 우선, 없으면 픽업 큐)
