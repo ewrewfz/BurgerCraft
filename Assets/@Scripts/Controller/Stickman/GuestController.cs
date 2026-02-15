@@ -11,8 +11,7 @@ public class GuestController : StickmanController
     [SerializeField] GameObject angryEmoji;
     [SerializeField] private float _angryEmojiDisplayDuration = 2f; // angryEmoji 표시 시간
     [SerializeField] private TextMeshProUGUI _timeOutText; // 타임아웃 텍스트
-    [SerializeField] private GameObject _timeOutGameObject; // TimeOut GameObject (빌보드 효과용)
-    [SerializeField] private float _billboardRotationSpeed = 2f; // 빌보드 회전 속도
+    [SerializeField] private GameObject _timeOutGameObject; // TimeOut GameObject
     
     private EGuestState _guestState = EGuestState.None;
     public EGuestState GuestState
@@ -113,29 +112,6 @@ public class GuestController : StickmanController
         if (_timeOutGameObject != null)
         {
             _timeOutGameObject.SetActive(false);
-        }
-    }
-    
-    /// <summary>
-    /// 빌보드 효과: 카메라를 자연스럽게 따라가도록 회전 (Billboard.cs 방식 참고)
-    /// </summary>
-    private void LateUpdate()
-    {
-        // TimeOut GameObject가 활성화되어 있을 때만 빌보드 효과 적용
-        if (_timeOutGameObject != null && _timeOutGameObject.activeSelf)
-        {
-            Camera mainCamera = Camera.main;
-            if (mainCamera == null)
-            {
-                mainCamera = FindObjectOfType<Camera>();
-            }
-            
-            if (mainCamera != null)
-            {
-                // Billboard.cs와 동일한 방식: 카메라를 향하도록 회전
-                Vector3 dir = _timeOutGameObject.transform.position - mainCamera.transform.position;
-                _timeOutGameObject.transform.LookAt(_timeOutGameObject.transform.position + dir);
-            }
         }
     }
 
