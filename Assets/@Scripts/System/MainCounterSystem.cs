@@ -220,6 +220,37 @@ public class MainCounterSystem : SystemBase
 
             bool foundJob = false;
 
+            // 예외 처리: 알바생이 트레이에 버거를 들고 있으면 무조건 BurgerPile로 옮기기 (최우선)
+            if (wc != null && wc.Tray != null && 
+                wc.Tray.CurrentTrayObjectType == EObjectType.Burger && 
+                wc.Tray.ItemCount > 0)
+            {
+                foundJob = true;
+                
+                Debug.Log($"[MainCounterSystem] 알바생이 버거를 들고 있음, BurgerPile로 이동: Worker={wc.name}, 버거 개수={wc.Tray.ItemCount}");
+                
+                // Counter의 BurgerWorkerPos로 이동
+                wc.SetDestination(Counter.BurgerWorkerPos.position, () =>
+                {
+                    wc.transform.rotation = Counter.BurgerWorkerPos.rotation;
+                });
+
+                // 가는중.
+                yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+
+                // 카운터 도착했으면 일정 시간 대기.
+                wc.transform.rotation = Counter.BurgerWorkerPos.rotation;
+                yield return new WaitForSeconds(0.5f);
+                
+                // 버거를 BurgerPile로 옮기기 (OnBurgerInteraction 호출)
+                Counter.OnBurgerInteraction(wc);
+                
+                yield return new WaitForSeconds(0.5f);
+                
+                // 버거를 옮긴 후 다시 작업 체크
+                continue;
+            }
+
             // 햄버거 운반 (우선순위 높음 - 버거가 있으면 먼저 옮기기)
             if (ShouldDoJob(EMainCounterJob.MoveBurger))
             {

@@ -53,6 +53,15 @@ public class Counter : UnlockableBase
 	
 	// 다음 주문 번호 (순차적으로 증가)
 	private int _nextOrderNumber = 1;
+	
+	// 손님별 픽업 큐 진입 시간 추적 (30초 이상 대기 시 실패 처리)
+	private Dictionary<GuestController, float> _pickupQueueEntryTimes = new Dictionary<GuestController, float>();
+	
+	// 손님별 픽업 큐 맨 앞 도착 시간 추적 (맨 앞에 도착한 시점부터 타임아웃 시작)
+	private Dictionary<GuestController, float> _orderStartTimes = new Dictionary<GuestController, float>();
+	
+	// 픽업 큐 대기 시간 제한 (초)
+	private const float PICKUP_QUEUE_TIMEOUT = 30f;
 
 	public List<WorkerController> Workers = new List<WorkerController>();
 	public List<Table> Tables => Owner?.Tables;
@@ -431,6 +440,362 @@ public class Counter : UnlockableBase
 	{
 		UpdatePickupQueueMovement();
 		UpdatePickupQueueInteraction();
+		CheckPickupQueueTimeouts(); // 픽업 큐 타임아웃 체크
+	}
+	
+	/// <summary>
+	/// 픽업 큐에서 30초 이상 대기한 손님들을 실패 처리합니다.
+	/// (픽업 큐 맨 앞에 도착한 시점부터 시간 측정, 맨 앞 손님만 체크)
+	/// </summary>
+	private void CheckPickupQueueTimeouts()
+	{
+		// 맨 앞 손님(인덱스 0)만 타임아웃 체크
+		if (_pickupQueueGuests.Count == 0)
+			return;
+		
+		GuestController firstGuest = _pickupQueueGuests[0];
+		if (firstGuest == null)
+			return;
+		
+		// 모든 손님의 타임아웃 텍스트를 먼저 숨기기 (맨 앞 손님만 나중에 활성화)
+		foreach (var guest in _pickupQueueGuests)
+		{
+			if (guest != null && guest != firstGuest)
+			{
+				guest.HideTimeOutText();
+			}
+		}
+		
+		// 맨 앞에 도착하지 않았으면 타임아웃 체크 안 함 (텍스트도 숨기기)
+		if (firstGuest.CurrentDestQueueIndex != 0 || !firstGuest.HasArrivedAtDestination)
+		{
+			// 맨 앞에 도착하지 않았으면 텍스트 숨기기
+			firstGuest.HideTimeOutText();
+			return;
+		}
+		
+		// 손님이 이미 버거를 받았으면 타임아웃 체크 안 함 (버거를 받는 중이면 대기 시간 리셋)
+		int receivedCount = _guestReceivedBurgers.ContainsKey(firstGuest) ? _guestReceivedBurgers[firstGuest] : 0;
+		int orderCount = _guestOrderCounts.ContainsKey(firstGuest) ? _guestOrderCounts[firstGuest] : 0;
+		
+		// 버거를 받았으면 타임아웃 시간 리셋 (버거를 받는 중이면 대기 시간 초기화)
+		if (receivedCount > 0)
+		{
+			// 버거를 받았으면 타임아웃 시간을 리셋 (새로 받기 시작)
+			if (_orderStartTimes.ContainsKey(firstGuest))
+			{
+				_orderStartTimes[firstGuest] = Time.time;	
+			}
+			// 타임아웃 텍스트 숨기기
+			firstGuest.HideTimeOutText();
+			return; // 버거를 받는 중이면 타임아웃 체크 안 함
+		}
+		
+		float currentTime = Time.time;
+		List<GuestController> guestsToProcess = new List<GuestController>();
+		float remainingTime = 0f;
+		
+		// 픽업 큐 맨 앞 도착 시간을 기준으로 체크 (맨 앞에 도착한 시점부터 시간 측정)
+		if (_orderStartTimes.ContainsKey(firstGuest))
+		{
+			float orderStartTime = _orderStartTimes[firstGuest];
+			float waitTime = currentTime - orderStartTime;
+			remainingTime = PICKUP_QUEUE_TIMEOUT - waitTime;
+			
+			// 남은 시간을 타임아웃 텍스트에 표시
+			firstGuest.UpdateTimeOutText(remainingTime);
+			
+			// 30초 이상 대기했으면 실패 처리 대상으로 추가
+			if (waitTime >= PICKUP_QUEUE_TIMEOUT)
+			{
+				guestsToProcess.Add(firstGuest);
+			}
+		}
+		// 타임아웃 시작 시간이 없으면 픽업 큐 진입 시간으로 폴백 (하위 호환성)
+		else if (_pickupQueueEntryTimes.ContainsKey(firstGuest))
+		{
+			float entryTime = _pickupQueueEntryTimes[firstGuest];
+			float waitTime = currentTime - entryTime;
+			remainingTime = PICKUP_QUEUE_TIMEOUT - waitTime;
+			
+			// 남은 시간을 타임아웃 텍스트에 표시
+			firstGuest.UpdateTimeOutText(remainingTime);
+			
+			if (waitTime >= PICKUP_QUEUE_TIMEOUT)
+			{
+				guestsToProcess.Add(firstGuest);
+			}
+		}
+		else
+		{
+			// 타임아웃 시작 시간이 없으면 텍스트 숨기기
+			firstGuest.HideTimeOutText();
+		}
+		
+		// 타임아웃된 손님들을 처리 (foreach 루프 밖에서 처리하여 컬렉션 수정 문제 방지)
+		foreach (var guest in guestsToProcess)
+		{
+			if (guest == null)
+				continue;
+			
+			float waitTime = _orderStartTimes.ContainsKey(guest) 
+				? (Time.time - _orderStartTimes[guest]) 
+				: (_pickupQueueEntryTimes.ContainsKey(guest) ? (Time.time - _pickupQueueEntryTimes[guest]) : 0f);
+			
+			Debug.LogWarning($"[Counter] 픽업 큐 타임아웃: 손님 {guest.name}이(가) 타임아웃되었습니다. 대기 시간={waitTime:F1}초, 실패 처리합니다.");
+			
+			// 실패한 손님의 주문과 버거 제거
+			RemoveFailedGuestOrdersAndBurgers(guest);
+			
+			// 실패 카운트 증가 (angryEmoji도 자동으로 표시됨)
+			guest.AddFailCount();
+			
+			// 이전 실패 처리와 동일하게 지정된 위치로 이동 후 사라지도록 처리
+			// ProcessOrderComplete 내부에서 큐에서 제거하므로 별도로 제거할 필요 없음
+			ProcessOrderComplete(guest, true);
+		}
+	}
+	
+	/// <summary>
+	/// 실패한 손님의 주문 레시피와 만들어진 버거를 제거합니다.
+	/// 모든 위치(버거파일, 트레이, 테이블 등)에서 해당 주문 번호의 버거를 찾아서 제거합니다.
+	/// </summary>
+	public void RemoveFailedGuestOrdersAndBurgers(GuestController guest)
+	{
+		if (guest == null)
+			return;
+		
+		int guestId = guest.GetInstanceID();
+		
+		// 주문 번호 가져오기
+		string orderNumber = null;
+		if (_guestOrderNumbers.ContainsKey(guestId))
+		{
+			int orderNum = _guestOrderNumbers[guestId];
+			orderNumber = $"주문 #{orderNum}";
+		}
+		
+		// 주문 개수 가져오기
+		int orderCount = _guestOrderCounts.ContainsKey(guest) ? _guestOrderCounts[guest] : 0;
+		
+		// Grill에서 해당 손님의 주문 제거
+		Grill grill = FindObjectOfType<Grill>();
+		if (grill != null && orderCount > 0)
+		{
+			grill.RemoveGuestOrders(guestId, orderCount);
+			Debug.Log($"[Counter] 실패한 손님의 주문 {orderCount}개를 Grill에서 제거했습니다.");
+		}
+		
+		// 모든 위치에서 해당 주문 번호의 버거 제거 (주문 개수만큼 강제로 제거)
+		int totalRemovedCount = 0;
+		int targetRemovalCount = orderCount > 0 ? orderCount : 1; // 주문 개수만큼 제거
+		
+		// 주문 번호가 있으면 주문 번호로 제거 시도
+		if (!string.IsNullOrEmpty(orderNumber))
+		{
+			// 주문 번호 형식 변형 시도 ("주문 #29", "주문#29", "#29", "29" 등)
+			string[] orderNumberVariants = new string[]
+			{
+				orderNumber, // "주문 #29"
+				orderNumber.Replace(" ", ""), // "주문#29"
+				orderNumber.Replace("주문 ", ""), // "#29"
+				orderNumber.Replace("주문 #", ""), // "29"
+				$"#{orderNumber.Replace("주문 #", "")}", // "#29" (다시)
+			};
+			
+			// 1. Grill의 BurgerPile에서 제거
+			if (grill != null && grill.BurgerPile != null)
+			{
+				foreach (string variant in orderNumberVariants)
+				{
+					int removedCount = grill.BurgerPile.RemoveBurgersByOrderNumber(variant);
+					totalRemovedCount += removedCount;
+					if (removedCount > 0)
+					{
+						Debug.Log($"[Counter] 실패한 손님의 버거 {removedCount}개를 Grill의 BurgerPile에서 제거했습니다. (주문 번호: {variant})");
+					}
+				}
+			}
+			
+			// 2. Counter의 BurgerPile에서 제거
+			if (_burgerPile != null)
+			{
+				foreach (string variant in orderNumberVariants)
+				{
+					int removedCount = _burgerPile.RemoveBurgersByOrderNumber(variant);
+					totalRemovedCount += removedCount;
+					if (removedCount > 0)
+					{
+						Debug.Log($"[Counter] 실패한 손님의 버거 {removedCount}개를 Counter의 BurgerPile에서 제거했습니다. (주문 번호: {variant})");
+					}
+				}
+			}
+			
+			// 3. 모든 알바생의 트레이에서 제거
+			WorkerController[] allWorkers = FindObjectsOfType<WorkerController>();
+			foreach (WorkerController worker in allWorkers)
+			{
+				if (worker == null || worker.Tray == null)
+					continue;
+				
+				// 트레이에 버거가 있는지 확인
+				if (worker.Tray.CurrentTrayObjectType == Define.EObjectType.Burger && worker.Tray.ItemCount > 0)
+				{
+					foreach (string variant in orderNumberVariants)
+					{
+						int removedFromTray = RemoveBurgersFromTray(worker.Tray, variant);
+						totalRemovedCount += removedFromTray;
+						if (removedFromTray > 0)
+						{
+							Debug.Log($"[Counter] 실패한 손님의 버거 {removedFromTray}개를 알바생 트레이에서 제거했습니다. (주문 번호: {variant}, Worker={worker.name})");
+						}
+					}
+				}
+			}
+			
+			// 4. 플레이어의 트레이에서도 제거
+			PlayerController player = FindObjectOfType<PlayerController>();
+			if (player != null && player.Tray != null)
+			{
+				if (player.Tray.CurrentTrayObjectType == Define.EObjectType.Burger && player.Tray.ItemCount > 0)
+				{
+					foreach (string variant in orderNumberVariants)
+					{
+						int removedFromTray = RemoveBurgersFromTray(player.Tray, variant);
+						totalRemovedCount += removedFromTray;
+						if (removedFromTray > 0)
+						{
+							Debug.Log($"[Counter] 실패한 손님의 버거 {removedFromTray}개를 플레이어 트레이에서 제거했습니다. (주문 번호: {variant})");
+						}
+					}
+				}
+			}
+			
+			// 5. 씬의 모든 버거 오브젝트에서 직접 검색하여 제거
+			GameObject[] allBurgers = GameObject.FindGameObjectsWithTag("Burger");
+			foreach (GameObject burgerObj in allBurgers)
+			{
+				if (burgerObj == null)
+					continue;
+				
+				BurgerOrderNumber orderNumberComponent = burgerObj.GetComponent<BurgerOrderNumber>();
+				if (orderNumberComponent != null)
+				{
+					foreach (string variant in orderNumberVariants)
+					{
+						if (orderNumberComponent.MatchesOrderNumber(variant))
+						{
+							Debug.Log($"[Counter] 씬에서 발견된 실패한 손님의 버거를 제거합니다. (주문 번호: {variant})");
+							GameManager.Instance.DespawnBurger(burgerObj);
+							totalRemovedCount++;
+							break; // 하나 제거했으면 다음 버거로
+						}
+					}
+				}
+			}
+		}
+		
+		// 주문 개수만큼 제거되지 않았으면 강제로 추가 제거 (주문 번호와 상관없이)
+		if (totalRemovedCount < targetRemovalCount && orderCount > 0)
+		{
+			Debug.LogWarning($"[Counter] 주문 번호로 {totalRemovedCount}개만 제거되었습니다. 목표: {targetRemovalCount}개. 추가로 {targetRemovalCount - totalRemovedCount}개를 강제 제거합니다.");
+			
+			// 주문 개수만큼 제거될 때까지 모든 위치에서 버거 제거
+			int remainingToRemove = targetRemovalCount - totalRemovedCount;
+			
+			// Grill의 BurgerPile에서 강제 제거
+			if (grill != null && grill.BurgerPile != null && grill.BurgerPile.ObjectCount > 0)
+			{
+				for (int i = 0; i < remainingToRemove && grill.BurgerPile.ObjectCount > 0; i++)
+				{
+					grill.BurgerPile.DespawnObject(); // DespawnObject()는 void를 반환하므로 내부에서 이미 삭제 처리됨
+					totalRemovedCount++;
+					Debug.Log($"[Counter] Grill의 BurgerPile에서 강제로 버거 1개를 제거했습니다. (남은 목표: {remainingToRemove - i - 1}개)");
+				}
+			}
+			
+			// Counter의 BurgerPile에서 강제 제거
+			remainingToRemove = targetRemovalCount - totalRemovedCount;
+			if (_burgerPile != null && _burgerPile.ObjectCount > 0 && remainingToRemove > 0)
+			{
+				for (int i = 0; i < remainingToRemove && _burgerPile.ObjectCount > 0; i++)
+				{
+					_burgerPile.DespawnObject(); // DespawnObject()는 void를 반환하므로 내부에서 이미 삭제 처리됨
+					totalRemovedCount++;
+					Debug.Log($"[Counter] Counter의 BurgerPile에서 강제로 버거 1개를 제거했습니다. (남은 목표: {remainingToRemove - i - 1}개)");
+				}
+			}
+		}
+		
+		if (totalRemovedCount == 0)
+		{
+			Debug.LogWarning($"[Counter] 실패한 손님의 버거를 찾을 수 없습니다. (주문 번호: {orderNumber}, 주문 개수: {orderCount})");
+		}
+		else
+		{
+			Debug.Log($"[Counter] 총 {totalRemovedCount}개의 실패한 버거를 제거했습니다. (주문 번호: {orderNumber}, 목표: {targetRemovalCount}개)");
+		}
+		
+		// 주문 번호 딕셔너리에서도 제거
+		if (_guestOrderNumbers.ContainsKey(guestId))
+		{
+			_guestOrderNumbers.Remove(guestId);
+			guest.SetOrderNumberDisplay(0);
+		}
+	}
+	
+	/// <summary>
+	/// 트레이에서 해당 주문 번호의 버거를 제거합니다.
+	/// </summary>
+	private int RemoveBurgersFromTray(TrayController tray, string orderNumber)
+	{
+		if (tray == null || tray.ItemCount == 0)
+			return 0;
+		
+		int removedCount = 0;
+		List<Transform> itemsToRemove = new List<Transform>();
+		
+		// 트레이의 모든 아이템 확인 (TrayController의 _items 리스트를 직접 접근할 수 없으므로
+		// 자식 오브젝트를 확인하거나, RemoveFromTray를 반복 호출하여 확인)
+		// 하지만 RemoveFromTray는 마지막 아이템만 제거하므로, 직접 접근이 필요함
+		// 리플렉션을 사용하거나, 다른 방법을 사용해야 함
+		
+		// 일단 자식 오브젝트를 확인하는 방법 사용
+		// 트레이의 아이템들은 트레이의 자식으로 추가되므로 자식 오브젝트 확인
+		for (int i = 0; i < tray.transform.childCount; i++)
+		{
+			Transform child = tray.transform.GetChild(i);
+			if (child == null)
+				continue;
+			
+			BurgerOrderNumber orderNumberComponent = child.GetComponent<BurgerOrderNumber>();
+			if (orderNumberComponent != null && orderNumberComponent.MatchesOrderNumber(orderNumber))
+			{
+				itemsToRemove.Add(child);
+			}
+		}
+		
+		// 찾은 버거들을 제거
+		foreach (Transform burgerTransform in itemsToRemove)
+		{
+			if (burgerTransform != null)
+			{
+				GameObject burgerObj = burgerTransform.gameObject;
+				// 트레이에서 제거 (TrayController의 내부 리스트에서도 제거해야 함)
+				// 하지만 직접 접근이 불가능하므로, 버거를 삭제하면 트레이가 자동으로 정리될 것으로 예상
+				// 일단 버거를 삭제하고, 트레이의 CurrentTrayObjectType을 확인하여 업데이트
+				GameManager.Instance.DespawnBurger(burgerObj);
+				removedCount++;
+			}
+		}
+		
+		// 트레이가 비어있으면 타입 초기화
+		if (tray.ItemCount == 0 && removedCount > 0)
+		{
+			tray.CurrentTrayObjectType = Define.EObjectType.None;
+		}
+		
+		return removedCount;
 	}
 	
 	/// <summary>
@@ -449,6 +814,12 @@ public class Counter : UnlockableBase
 			// 다음 지점으로 이동.
 			if (guest.CurrentDestQueueIndex > guestIndex)
 			{
+				// 이전에 맨 앞(인덱스 0)이었던 손님의 타임아웃 텍스트 숨기기
+				if (guest.CurrentDestQueueIndex == 1 && guestIndex == 0)
+				{
+					guest.HideTimeOutText();
+				}
+				
 				guest.CurrentDestQueueIndex--;
 
 				Transform dest = _pickupQueuePoints[guest.CurrentDestQueueIndex];
@@ -471,6 +842,12 @@ public class Counter : UnlockableBase
 			GuestController firstGuest = _pickupQueueGuests[0];
 			if (firstGuest != null && firstGuest.CurrentDestQueueIndex == 0 && firstGuest.HasArrivedAtDestination)
 			{
+				// 픽업 큐 맨 앞에 도착했을 때 타임아웃 시작 시간 기록
+				if (!_orderStartTimes.ContainsKey(firstGuest))
+				{
+					_orderStartTimes[firstGuest] = Time.time;
+				}
+				
 				TryGiveBurgerToGuest(firstGuest);
 			}
 		}
@@ -485,6 +862,9 @@ public class Counter : UnlockableBase
 			return;
 		
 		_pickupQueueGuests.Add(guest);
+		
+		// 픽업 큐 진입 시간 기록 (타임아웃 체크용)
+		_pickupQueueEntryTimes[guest] = Time.time;
 	}
 	
 	/// <summary>
@@ -496,6 +876,15 @@ public class Counter : UnlockableBase
 			return;
 		
 		_pickupQueueGuests.Remove(guest);
+		
+		// 픽업 큐 진입 시간 기록 제거
+		if (_pickupQueueEntryTimes.ContainsKey(guest))
+		{
+			_pickupQueueEntryTimes.Remove(guest);
+		}
+		
+		// 타임아웃 텍스트 숨기기
+		guest.HideTimeOutText();
 	}
 	
 	/// <summary>
@@ -555,6 +944,9 @@ public class Counter : UnlockableBase
 				SoundManager.Instance.PlaySFX("SFX_Stack_Customer");
 				
 				_guestReceivedBurgers[guest] = receivedCount + 1;
+				
+				// 버거를 받았으면 타임아웃 텍스트 숨기기
+				guest.HideTimeOutText();
 				
 				// 모든 버거를 받았으면 테이블로 보내기
 				if (_guestReceivedBurgers[guest] >= orderCount)
@@ -632,6 +1024,10 @@ public class Counter : UnlockableBase
 			UI_Progressbar progressbar = wc.GetComponentInChildren<UI_Progressbar>(true);
 			if (progressbar != null)
 			{
+				if (progressbar.gameObject.activeSelf)
+				{
+					Debug.LogWarning($"[Counter] 알바생이 주문 중에 Counter를 떠남: Worker={wc.name}, 남은 주문={_remainingOrderCount}");
+				}
 				progressbar.StopProgress();
 				progressbar.gameObject.SetActive(false);
 			}
@@ -650,6 +1046,8 @@ public class Counter : UnlockableBase
 			Debug.LogWarning("[Counter] Worker의 UI_Progressbar를 찾을 수 없습니다.");
 			return;
 		}
+		
+		Debug.Log($"[Counter] 알바생 주문 시작: Worker={wc.name}, 남은 주문={_remainingOrderCount}, 손님 수={_queueGuests.Count}");
 		
 		// 진행바 시작
 		StartProgressbarForOrder(wc, progressbar);
@@ -678,6 +1076,8 @@ public class Counter : UnlockableBase
 			// 랜덤 주문 생성
 			Define.BurgerRecipe randomRecipe = UI_OrderSystem.GenerateRandomRecipe();
 			
+			Debug.Log($"[Counter] 알바생 주문 완료: Worker={wc.name}, 레시피={randomRecipe}, 남은 주문={_remainingOrderCount}");
+			
 			// 주문 완료 처리
 			OnOrderComplete(randomRecipe);
 			
@@ -689,6 +1089,8 @@ public class Counter : UnlockableBase
 			}
 			else
 			{
+				Debug.Log($"[Counter] 알바생 모든 주문 완료: Worker={wc.name}");
+				
 				// 모든 주문 완료 - 진행바 비활성화
 				progressbar.gameObject.SetActive(false);
 				
@@ -727,6 +1129,8 @@ public class Counter : UnlockableBase
 			int orderNumber = _guestOrderNumbers[guestId];
 			string orderNumberText = $"주문 #{orderNumber}";
 			
+			Debug.Log($"[Counter] OnOrderComplete: 주문 #{orderNumber}을 Grill에 추가, 손님={firstGuest.name}, 레시피={recipe}");
+			
 			grill.AddOrder(recipe, firstGuest, orderNumberText);
 			
 			// GuestController에 주문 번호 표시 업데이트
@@ -755,6 +1159,8 @@ public class Counter : UnlockableBase
 					_guestOrderCounts[firstGuest] = _nextOrderBurgerCount;
 					_guestReceivedBurgers[firstGuest] = 0;
 				}
+				
+				Debug.Log($"[Counter] 모든 주문 완료, 손님을 픽업 큐로 이동: 손님={firstGuest.name}, 주문 개수={_nextOrderBurgerCount}");
 				
 				MoveGuestToPickupQueue(firstGuest);
 			}
@@ -830,7 +1236,7 @@ public class Counter : UnlockableBase
 	}
 	
 
-	void OnBurgerInteraction(WorkerController wc)
+	public void OnBurgerInteraction(WorkerController wc)
 	{
 		if (wc == null)
 			return;
@@ -840,6 +1246,16 @@ public class Counter : UnlockableBase
 		{
 			_burgerPile.TrayToPile(wc.Tray);
 			return;
+		}
+		
+		// 알바생이 버거를 옮기는 경우 (트레이에 버거가 있으면 BurgerPile로 옮기기)
+		if (wc.GetComponent<PlayerController>() == null && wc.GetComponent<GuestController>() == null)
+		{
+			if (wc.Tray != null && wc.Tray.CurrentTrayObjectType == Define.EObjectType.Burger && wc.Tray.ItemCount > 0)
+			{
+				_burgerPile.TrayToPile(wc.Tray);
+				return;
+			}
 		}
 		
 		// 손님이 버거를 가져가는 경우
@@ -958,23 +1374,35 @@ public class Counter : UnlockableBase
 		// 픽업 큐에서 제거
 		_pickupQueueGuests.Remove(guest);
 		
-		// 딕셔너리에서도 제거
-		if (_guestOrderCounts.ContainsKey(guest))
-		{
-			_guestOrderCounts.Remove(guest);
-		}
-		if (_guestReceivedBurgers.ContainsKey(guest))
-		{
-			_guestReceivedBurgers.Remove(guest);
-		}
+		// 타임아웃 텍스트 숨기기
+		guest.HideTimeOutText();
 		
-		// 주문 번호도 제거
-		int guestId = guest.GetInstanceID();
-		if (_guestOrderNumbers.ContainsKey(guestId))
-		{
-			_guestOrderNumbers.Remove(guestId);
-			guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
-		}
+			// 딕셔너리에서도 제거
+			if (_pickupQueueEntryTimes.ContainsKey(guest))
+			{
+				_pickupQueueEntryTimes.Remove(guest);
+			}
+			// 주문 시작 시간도 제거 (테이블로 가면 타임아웃 체크 불필요)
+			if (_orderStartTimes.ContainsKey(guest))
+			{
+				_orderStartTimes.Remove(guest);
+			}
+			if (_guestOrderCounts.ContainsKey(guest))
+			{
+				_guestOrderCounts.Remove(guest);
+			}
+			if (_guestReceivedBurgers.ContainsKey(guest))
+			{
+				_guestReceivedBurgers.Remove(guest);
+			}
+			
+			// 주문 번호도 제거
+			int guestId = guest.GetInstanceID();
+			if (_guestOrderNumbers.ContainsKey(guestId))
+			{
+				_guestOrderNumbers.Remove(guestId);
+				guest.SetOrderNumberDisplay(0); // 인스펙터 표시도 초기화
+			}
 	}
 	
 	/// <summary>
@@ -1106,6 +1534,15 @@ public class Counter : UnlockableBase
 			}
 			
 			// 딕셔너리에서도 제거
+			if (_pickupQueueEntryTimes.ContainsKey(guest))
+			{
+				_pickupQueueEntryTimes.Remove(guest);
+			}
+			// 주문 시작 시간도 제거
+			if (_orderStartTimes.ContainsKey(guest))
+			{
+				_orderStartTimes.Remove(guest);
+			}
 			if (_guestOrderCounts.ContainsKey(guest))
 			{
 				_guestOrderCounts.Remove(guest);

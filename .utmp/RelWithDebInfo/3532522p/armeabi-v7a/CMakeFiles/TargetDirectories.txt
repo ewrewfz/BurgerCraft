@@ -1,0 +1,5 @@
+C:/Users/bryun/Desktop/Git/BurgerCraft/.utmp/RelWithDebInfo/3532522p/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/bryun/Desktop/Git/BurgerCraft/.utmp/RelWithDebInfo/3532522p/armeabi-v7a/CMakeFiles/rebuild_cache.dir
+C:/Users/bryun/Desktop/Git/BurgerCraft/.utmp/RelWithDebInfo/3532522p/armeabi-v7a/GameActivity/CMakeFiles/game.dir
+C:/Users/bryun/Desktop/Git/BurgerCraft/.utmp/RelWithDebInfo/3532522p/armeabi-v7a/GameActivity/CMakeFiles/edit_cache.dir
+C:/Users/bryun/Desktop/Git/BurgerCraft/.utmp/RelWithDebInfo/3532522p/armeabi-v7a/GameActivity/CMakeFiles/rebuild_cache.dir

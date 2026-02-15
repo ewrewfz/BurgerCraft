@@ -15,7 +15,7 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
     [SerializeField] private TextMeshProUGUI _tipText;
     [SerializeField] private TextMeshProUGUI _totalText;
     [SerializeField] private TextMeshProUGUI _orderNumberText; // 주문 번호 표시용
-    [SerializeField] private GameObject _workingAI;
+    [SerializeField] private GameObject _workingAI; // 알바생 작업 표시
     
     [Header("Outline")]
     [SerializeField] private Image _receiptImage; // Receipt 프리팹의 Image 컴포넌트
@@ -62,18 +62,7 @@ public class UI_CookingReceipt : MonoBehaviour, IPointerClickHandler
         _outline.effectColor = Color.yellow;
         _outline.effectDistance = new Vector2(5, -5);
         
-        // Working_AI 자동 찾기 (없으면)
-        if (_workingAI == null)
-        {
-            _workingAI = Utils.FindChild(gameObject, "Working_AI", true);
         }
-        
-        // 초기에는 비활성화
-        if (_workingAI != null)
-        {
-            _workingAI.SetActive(false);
-        }
-    }
     }
     
     /// <summary>

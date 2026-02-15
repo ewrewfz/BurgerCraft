@@ -17,6 +17,7 @@ public class Grill : UnlockableBase
 	private WorkerInteraction _interaction;
 
 	public int BurgerCount => _burgers.ObjectCount;
+	public BurgerPile BurgerPile => _burgers;
 	public WorkerController CurrentWorker => _interaction.CurrentWorker;
 	public Transform WorkerPos;
 	public Transform BurgerPickupPos; // 버거 픽업 전용 위치
@@ -491,49 +492,6 @@ public class Grill : UnlockableBase
 		RemoveGuestOrders(guest.GetInstanceID(), orderCount);
 	}
 	
-	/// <summary>
-	/// 처리되지 않은 주문들을 다시 큐에 추가합니다 (팝업이 닫힐 때 호출)
-	/// _deliveredOrderQueue에서 처리되지 않은 주문을 _orderQueue로 다시 이동
-	/// </summary>
-	public void ReturnOrders(List<Define.BurgerRecipe> orders)
-	{
-		if (orders == null || orders.Count == 0)
-			return;
-		
-		// 처리되지 않은 주문을 _orderQueue에 추가 (중복 방지)
-		foreach (var order in orders)
-		{
-			// 이미 _orderQueue에 있는지 확인 (IsMatch로 비교)
-			bool alreadyInQueue = false;
-			foreach (var existingOrder in _orderQueue)
-			{
-				if (UI_OrderSystem.IsMatch(existingOrder, order))
-				{
-					alreadyInQueue = true;
-					break;
-				}
-			}
-			
-			if (!alreadyInQueue)
-			{
-				_orderQueue.Add(order);
-			}
-		}
-		
-		// 전달된 주문 큐에서 반환된 주문 제거 (struct이므로 IsMatch로 비교)
-		foreach (var order in orders)
-		{
-			_deliveredOrderQueue.RemoveAll(r => UI_OrderSystem.IsMatch(r, order));
-		}
-		
-#if UNITY_EDITOR
-		// 인스펙터 표시용 업데이트
-		UpdateOrderQueueDisplay();
-		UpdateDeliveredOrderQueueDisplay();
-#endif
-		// 주문이 다시 추가되었으므로 점멸 효과 시작
-		CheckPendingOrdersAndBlink();
-	}
 	
 	/// <summary>
 	/// 인스펙터 표시용 주문 큐를 업데이트합니다.
@@ -650,16 +608,6 @@ public class Grill : UnlockableBase
 		// 플레이어인 경우 기존 로직 실행
 		if (wc.GetComponent<PlayerController>() != null)
 		{
-			// 알바생이 이미 작업 중이면 플레이어는 나가게 함
-			if (CurrentWorker != null && CurrentWorker.GetComponent<PlayerController>() == null)
-			{
-				// 알바생이 작업 중이므로 플레이어를 나가게 함
-				Vector3 exitPos = WorkerPos.position - WorkerPos.forward * 1.5f;
-				wc.SetDestination(exitPos);
-				return;
-			}
-			
-			// 버거가 있으면 OnInteraction에서 처리하므로 여기서는 팝업만 처리
 			// 버거가 없고 주문이 있을 때만 CookingPopup 열기
 			if (_burgers.ObjectCount == 0)
 			{
@@ -722,8 +670,16 @@ public class Grill : UnlockableBase
 		// 알바생인 경우 진행바 표시 및 자동 조리 완료
 		else
 		{
-			// 주문이 있고 버거가 최대 개수 미만이면 자동 조리 시작
-			if (HasOrders() && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+			// 버거를 가져가는 작업 중이면 조리를 시작하지 않음 (MoveBurger 작업)
+			// 버거가 이미 그릴에 있고, 알바생이 버거를 가져가는 작업 중이라면 조리 시작 안 함
+			bool isPickingUpBurgers = _burgers.ObjectCount > 0 && 
+			                          wc.Tray != null && 
+			                          (wc.Tray.CurrentTrayObjectType == Define.EObjectType.None || 
+			                           wc.Tray.CurrentTrayObjectType == Define.EObjectType.Burger) &&
+			                          wc.Tray.TotalItemCount < Define.MAX_BURGER_ADD_COUNT;
+			
+			// 버거를 가져가는 작업이 아니고, 주문이 있고 버거가 최대 개수 미만이면 자동 조리 시작
+			if (!isPickingUpBurgers && HasOrders() && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
 			{
 				StartWorkerAutoCooking(wc);
 			}
@@ -896,15 +852,18 @@ public class Grill : UnlockableBase
 		// 그릴에 버거가 있으면 트레이에 올리기
 		if (_burgers.ObjectCount > 0)
 		{
+			if (_burgers.ObjectCount >= Define.GRILL_MAX_BURGER_COUNT)
+				MaxObject.SetActive(true);
+
 			// 트레이가 비어있거나 버거만 있고, 최대 개수 미만이면 받을 수 있음
-			if ((pc.Tray.CurrentTrayObjectType == Define.EObjectType.None || 
+			if ((pc.Tray.CurrentTrayObjectType == Define.EObjectType.None    || 
 			     pc.Tray.CurrentTrayObjectType == Define.EObjectType.Burger) &&
-			    pc.Tray.TotalItemCount < Define.MAX_BURGER_ADD_COUNT)
+			     pc.Tray.TotalItemCount < Define.MAX_BURGER_ADD_COUNT)
 			{
 				_burgers.PileToTray(pc.Tray);
 
 				// 가져가서 개수가 줄어들었으면 끈다
-				if (MaxObject != null && _burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
+				if (_burgers.ObjectCount < Define.GRILL_MAX_BURGER_COUNT)
 					MaxObject.SetActive(false);
 			}
 		}

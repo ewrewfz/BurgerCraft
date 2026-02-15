@@ -75,4 +75,51 @@ public class BurgerPile : PileBase
         tray.AddToTray(matchingBurger.transform);
         return true;
     }
+    
+    /// <summary>
+    /// 주문 번호가 일치하는 모든 버거를 제거하고 삭제합니다.
+    /// </summary>
+    public int RemoveBurgersByOrderNumber(string orderNumber)
+    {
+        if (string.IsNullOrEmpty(orderNumber) || ObjectCount == 0)
+            return 0;
+        
+        List<GameObject> burgersToRemove = new List<GameObject>();
+        Stack<GameObject> tempStack = new Stack<GameObject>();
+        
+        // 스택을 순회하면서 주문 번호가 일치하는 모든 버거 찾기
+        while (_objects.Count > 0)
+        {
+            GameObject burger = _objects.Pop();
+            tempStack.Push(burger);
+            
+            BurgerOrderNumber orderNumberComponent = burger.GetComponent<BurgerOrderNumber>();
+            if (orderNumberComponent != null && orderNumberComponent.MatchesOrderNumber(orderNumber))
+            {
+                burgersToRemove.Add(burger);
+            }
+        }
+        
+        // 나머지 버거들을 다시 스택에 넣기
+        while (tempStack.Count > 0)
+        {
+            GameObject burger = tempStack.Pop();
+            if (!burgersToRemove.Contains(burger))
+            {
+                _objects.Push(burger);
+            }
+        }
+        
+        // 일치하는 버거들을 삭제
+        int removedCount = burgersToRemove.Count;
+        foreach (GameObject burger in burgersToRemove)
+        {
+            if (burger != null)
+            {
+                GameManager.Instance.DespawnBurger(burger);
+            }
+        }
+        
+        return removedCount;
+    }
 }

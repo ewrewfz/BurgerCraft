@@ -66,7 +66,7 @@ public class UI_CookingPopup : MonoBehaviour
     [Header("Time Attack")]
     [SerializeField] private TextMeshProUGUI _TimeAttackText;
     
-    // 선택/상태
+    // 선택,상태
     private readonly List<UI_CookingReceipt> _activeReceipts = new List<UI_CookingReceipt>();
     private UI_CookingReceipt _currentReceipt;
     private Define.BurgerRecipe _currentRecipe = UI_OrderSystem.CreateEmptyRecipe();
@@ -77,9 +77,7 @@ public class UI_CookingPopup : MonoBehaviour
     private Coroutine _timeAttackCoroutine;
     private float _remainingTime;
     
-    // 주문 큐 (Grill에서 받은 모든 주문을 저장)
-    private readonly Queue<Define.BurgerRecipe> _orderQueue = new Queue<Define.BurgerRecipe>();
-
+  
     private UI_BurgerStack _currentBurgerStack;
     private readonly List<GameObject> _assembledBurgerParts = new List<GameObject>();
     private bool _hasBottomBread;
@@ -115,12 +113,7 @@ public class UI_CookingPopup : MonoBehaviour
     }
 
     private void OnDisable()
-    {
-        // 3회 실패로 인한 종료가 아닐 때만 처리되지 않은 주문을 Grill에 다시 반환
-        // _orderQueue는 사용하지 않음 - _deliveredOrderQueue는 Grill에서 직접 관리
-        // 팝업이 비활성화될 때 정리 작업
-        // 주의: PoolManager에 반환하는 것은 호출하는 쪽에서 처리
-        
+    { 
         // 타임어택 중지
         StopTimeAttack();
     }
@@ -1375,6 +1368,9 @@ public class UI_CookingPopup : MonoBehaviour
             
             _currentReceipt = null;
         }
+
+        // 실패한 손님의 주문과 버거 제거 (부분적으로 만들어진 버거도 삭제)
+        counter.RemoveFailedGuestOrdersAndBurgers(failedGuest);
 
         // 실패한 주문 번호에 해당하는 손님을 leavepos로 보내기
         counter.ProcessOrderComplete(failedGuest, true);

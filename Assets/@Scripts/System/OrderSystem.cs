@@ -68,31 +68,26 @@ public class UI_OrderSystem : GameManager
         // 빵 비교
         if (crafted.Bread != requested.Bread)
         {
-            Debug.LogWarning($"[매칭 실패] 빵 불일치: crafted={crafted.Bread}, requested={requested.Bread}");
             return false;
         }
         
         // 패티 비교
         if (crafted.PattyCount != requested.PattyCount)
         {
-            Debug.LogWarning($"[매칭 실패] 패티 개수 불일치: crafted={crafted.PattyCount}, requested={requested.PattyCount}");
             return false;
         }
         if (crafted.PattyCount > 0 && crafted.Patty != requested.Patty)
         {
-            Debug.LogWarning($"[매칭 실패] 패티 종류 불일치: crafted={crafted.Patty}, requested={requested.Patty}");
             return false;
         }
         
         // 소스 비교
         if (crafted.Sauce1Count != requested.Sauce1Count)
         {
-            Debug.LogWarning($"[매칭 실패] 소스1 개수 불일치: crafted={crafted.Sauce1Count}, requested={requested.Sauce1Count}");
             return false;
         }
         if (crafted.Sauce2Count != requested.Sauce2Count)
         {
-            Debug.LogWarning($"[매칭 실패] 소스2 개수 불일치: crafted={crafted.Sauce2Count}, requested={requested.Sauce2Count}");
             return false;
         }
         
@@ -108,7 +103,6 @@ public class UI_OrderSystem : GameManager
         
         if (craftedVeggies.Count != requestedVeggies.Count)
         {
-            Debug.LogWarning($"[매칭 실패] 야채 개수 불일치: crafted={craftedVeggies.Count}개 ({string.Join(", ", craftedVeggies)}), requested={requestedVeggies.Count}개 ({string.Join(", ", requestedVeggies)})");
             return false;
         }
         
@@ -116,7 +110,6 @@ public class UI_OrderSystem : GameManager
         {
             if (craftedVeggies[i] != requestedVeggies[i])
             {
-                Debug.LogWarning($"[매칭 실패] 야채 종류 불일치: crafted[{i}]={craftedVeggies[i]}, requested[{i}]={requestedVeggies[i]}");
                 return false;
             }
         }
