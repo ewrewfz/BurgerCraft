@@ -27,6 +27,10 @@ public class Office : UnlockableBase
 
 	public void OnLeaveOffice(WorkerController wc)
 	{
-		GameManager.Instance.UpgradeEmployeePopup.gameObject.SetActive(false);
+		// 플레이어가 직접 나간 경우에만 팝업 닫기
+		if (wc != null && wc.Tray != null && wc.Tray.IsPlayer)
+		{
+			GameManager.Instance.UpgradeEmployeePopup.gameObject.SetActive(false);
+		}
 	}
 }
