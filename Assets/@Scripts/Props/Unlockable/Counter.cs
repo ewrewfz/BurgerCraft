@@ -79,6 +79,7 @@ public class Counter : UnlockableBase
 
 	public Transform GuestSpawnPos;
 	public Transform BurgerPickupPos;
+	public Transform MoneyPilePos => _moneyPile != null ? _moneyPile.transform : null;
 	private GameObject _pickupGuestPool; // 픽업 큐 손님들을 관리하는 풀 게임오브젝트 (@PickupGuestPool)
 
 
@@ -474,21 +475,16 @@ public class Counter : UnlockableBase
 			return;
 		}
 		
-		// 손님이 이미 버거를 받았으면 타임아웃 체크 안 함 (버거를 받는 중이면 대기 시간 리셋)
+		// 손님이 받은 버거 개수와 주문 개수 확인
 		int receivedCount = _guestReceivedBurgers.ContainsKey(firstGuest) ? _guestReceivedBurgers[firstGuest] : 0;
 		int orderCount = _guestOrderCounts.ContainsKey(firstGuest) ? _guestOrderCounts[firstGuest] : 0;
 		
-		// 버거를 받았으면 타임아웃 시간 리셋 (버거를 받는 중이면 대기 시간 초기화)
-		if (receivedCount > 0)
+		// 모든 버거를 받았으면 타임아웃 체크 안 함 (타임아웃 텍스트 숨기기)
+		if (receivedCount >= orderCount && orderCount > 0)
 		{
-			// 버거를 받았으면 타임아웃 시간을 리셋 (새로 받기 시작)
-			if (_orderStartTimes.ContainsKey(firstGuest))
-			{
-				_orderStartTimes[firstGuest] = Time.time;	
-			}
-			// 타임아웃 텍스트 숨기기
+			// 모든 버거를 받았으면 타임아웃 텍스트 숨기기
 			firstGuest.HideTimeOutText();
-			return; // 버거를 받는 중이면 타임아웃 체크 안 함
+			return; // 모든 버거를 받았으면 타임아웃 체크 안 함
 		}
 		
 		float currentTime = Time.time;
@@ -1046,8 +1042,6 @@ public class Counter : UnlockableBase
 			Debug.LogWarning("[Counter] Worker의 UI_Progressbar를 찾을 수 없습니다.");
 			return;
 		}
-		
-		Debug.Log($"[Counter] 알바생 주문 시작: Worker={wc.name}, 남은 주문={_remainingOrderCount}, 손님 수={_queueGuests.Count}");
 		
 		// 진행바 시작
 		StartProgressbarForOrder(wc, progressbar);

@@ -13,7 +13,6 @@ public enum EUpgradeEmployeePopupItemType
 
 public class UI_UpgradeEmployeePopupItem : MonoBehaviour
 {
-	// TODO : 나머지 UI 연동
 
 	[SerializeField]
 	private Button _purchaseButton;

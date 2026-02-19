@@ -146,7 +146,6 @@ public class MainCounterSystem : SystemBase
         int jobIndex = (int)jobType;
         if (jobIndex < 0 || jobIndex >= Jobs.Length)
         {
-            Debug.LogError($"[MainCounterSystem] Jobs 배열 크기 불일치: jobType={jobType}, jobIndex={jobIndex}, Jobs.Length={Jobs.Length}, MaxCount={(int)EMainCounterJob.MaxCount}");
             // 배열 재초기화 시도
             Jobs = new WorkerController[(int)EMainCounterJob.MaxCount];
             return false;
@@ -226,8 +225,6 @@ public class MainCounterSystem : SystemBase
                 wc.Tray.ItemCount > 0)
             {
                 foundJob = true;
-                
-                Debug.Log($"[MainCounterSystem] 알바생이 버거를 들고 있음, BurgerPile로 이동: Worker={wc.name}, 버거 개수={wc.Tray.ItemCount}");
                 
                 // Counter의 BurgerWorkerPos로 이동
                 wc.SetDestination(Counter.BurgerWorkerPos.position, () =>
@@ -417,14 +414,52 @@ public class MainCounterSystem : SystemBase
                 wc.transform.rotation = table.WorkerPos.rotation;
                 yield return new WaitUntil(() => wc.IsServing == false);
 
-                // 일감 점유 해제.
-                Jobs[(int)EMainCounterJob.CleanTable] = null;
+
+
+                // 쓰레기를 비우지 않고 다른 일감을 점유 해서 예외처리 260219
+                if(wc.IsServing == false)
+                {
+                    // 일감 점유 해제.
+                    Jobs[(int)EMainCounterJob.CleanTable] = null;
+                }
+                else
+                {
+                    // 쓰레기통으로 이동.
+                    wc.SetDestination(TrashCan.WorkerPos.position, () =>
+                    {
+                        wc.transform.rotation = TrashCan.WorkerPos.rotation;
+                    });
+                }
+                
+                
             }
 
-            // 일이 없으면 반납.
+            // 일이 없으면 MoneyPile 위치로 대기 이동
             if (foundJob == false)
             {
-                RemoveWorker(wc);
+                // MoneyPile 위치로 이동 (대기)
+                if (Counter != null && Counter.MoneyPilePos != null)
+                {
+                    wc.SetDestination(Counter.MoneyPilePos.position, () =>
+                    {
+                        if (Counter.MoneyPilePos.rotation != Quaternion.identity)
+                        {
+                            wc.transform.rotation = Counter.MoneyPilePos.rotation;
+                        }
+                    });
+                    
+                    // 도착할 때까지 대기
+                    yield return new WaitUntil(() => wc.HasArrivedAtDestination);
+                    
+                    // 대기 상태로 유지 (다시 작업 체크)
+                    yield return new WaitForSeconds(1);
+                    continue;
+                }
+                else
+                {
+                    // MoneyPile 위치를 찾을 수 없으면 기존대로 반납
+                    RemoveWorker(wc);
+                }
             }
         }
     }
@@ -556,8 +591,8 @@ public class MainCounterSystem : SystemBase
     }
 
     /// <summary>
-    /// 레벨에 따라 프랍을 언락합니다.
-    /// _levelUnlockData에서 정의된 레벨별 프랍을 언락합니다.
+    /// 레벨에 따라 프랍을 언락
+    /// _levelUnlockData에서 정의된 레벨별 프랍을 언락
     /// </summary>
     private void CheckAndUnlockPropsByLevel(int level)
     {
@@ -589,7 +624,7 @@ public class MainCounterSystem : SystemBase
     }
 
     /// <summary>
-    /// 언락 데이터에서 프랍을 가져오거나 생성합니다.
+    /// 언락 데이터에서 프랍을 가져오거나 생성
     /// </summary>
     private UnlockableBase GetOrCreateProp(LevelUnlockData unlockData)
     {
@@ -599,7 +634,7 @@ public class MainCounterSystem : SystemBase
             return unlockData.Prop;
         }
 
-        // 프리팹이 있으면 위치에 생성
+       
         if (unlockData.PropPrefab != null)
         {
             GameObject propObj = Instantiate(unlockData.PropPrefab, unlockData.Position, Quaternion.identity);
